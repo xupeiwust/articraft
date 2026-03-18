@@ -374,40 +374,37 @@ export function InspectPanel({
   return (
     <ScrollArea className="h-full">
       <div className="space-y-5 pb-3">
-        <section className="flex items-start gap-2 border-b border-[var(--border-subtle)] pb-3">
-          <div className="min-w-0 flex-1">
+        {/* Prompt */}
+        <section className="space-y-2">
+          <SectionLabel>Prompt</SectionLabel>
+          <div className="flex items-center gap-1.5 overflow-hidden rounded-md bg-[var(--surface-1)] px-2 py-1.5">
             <p
-              className="truncate font-mono text-[10px] text-[var(--text-quaternary)]"
+              className="min-w-0 flex-1 truncate font-mono text-[9.5px] text-[var(--text-tertiary)]"
               title={recordPath ?? undefined}
             >
               {recordPath ?? "Object path unavailable"}
             </p>
+            <div className="flex shrink-0 items-center gap-0.5">
+              <button
+                type="button"
+                aria-label={copyState === "copied" ? "Copied object path" : "Copy object path"}
+                title={copyState === "copied" ? "Copied object path" : copyState === "error" ? "Copy failed" : "Copy object path"}
+                className="flex size-5 items-center justify-center rounded-md text-[var(--text-quaternary)] transition-colors duration-100 hover:bg-[var(--surface-0)] hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-soft)]"
+                onClick={() => void handleCopyRecordPath()}
+              >
+                <Copy className={`size-3 ${copyState === "copied" ? "text-[var(--success)]" : ""}`} />
+              </button>
+              <button
+                type="button"
+                aria-label={openState === "opened" ? "Opened object folder" : "Open object folder"}
+                title={openState === "opened" ? "Opened object folder" : openState === "error" ? "Open failed" : "Open object folder"}
+                className="flex size-5 items-center justify-center rounded-md text-[var(--text-quaternary)] transition-colors duration-100 hover:bg-[var(--surface-0)] hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-soft)]"
+                onClick={() => void handleOpenRecordFolder()}
+              >
+                <FolderOpen className={`size-3 ${openState === "opened" ? "text-[var(--success)]" : ""}`} />
+              </button>
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              aria-label={copyState === "copied" ? "Copied object path" : "Copy object path"}
-              title={copyState === "copied" ? "Copied object path" : copyState === "error" ? "Copy failed" : "Copy object path"}
-              className="flex size-6 items-center justify-center rounded-md text-[var(--text-quaternary)] transition-colors duration-100 hover:bg-[var(--surface-1)] hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-soft)]"
-              onClick={() => void handleCopyRecordPath()}
-            >
-              <Copy className={`size-3.5 ${copyState === "copied" ? "text-[var(--success)]" : ""}`} />
-            </button>
-            <button
-              type="button"
-              aria-label={openState === "opened" ? "Opened object folder" : "Open object folder"}
-              title={openState === "opened" ? "Opened object folder" : openState === "error" ? "Open failed" : "Open object folder"}
-              className="flex size-6 items-center justify-center rounded-md text-[var(--text-quaternary)] transition-colors duration-100 hover:bg-[var(--surface-1)] hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-soft)]"
-              onClick={() => void handleOpenRecordFolder()}
-            >
-              <FolderOpen className={`size-3.5 ${openState === "opened" ? "text-[var(--success)]" : ""}`} />
-            </button>
-          </div>
-        </section>
-
-        {/* Prompt */}
-        <section>
-          <SectionLabel>Prompt</SectionLabel>
           {promptStatus === "idle" || promptStatus === "loading" ? (
             <div className="space-y-1.5">
               <Skeleton className="h-3 w-full" />
