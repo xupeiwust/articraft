@@ -13,6 +13,12 @@ setup:
     fi
     uv sync --group dev
     uv run pre-commit install --hook-type pre-commit --hook-type pre-push
+    @if command -v npm >/dev/null 2>&1; then \
+        npm --prefix viewer/web ci; \
+    else \
+        echo "npm not found; skipping viewer/web dependency install."; \
+        echo "Install Node.js and npm to run the viewer and frontend hooks."; \
+    fi
     uv run articraft-dataset --repo-root . init-storage
     uv run articraft-workbench --repo-root . init-storage
     uv run articraft-dataset --repo-root . validate
