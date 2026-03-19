@@ -7,6 +7,7 @@ import type { UrdfSpec } from "@/components/viewer3d/urdf-parser";
 
 interface ViewportPanelProps {
   baseFileUrl: string | null;
+  persistedRecordId: string | null;
   assetRevisionKey: string | null;
   selectionKey: string | null;
   renderOptions: RenderOptions;
@@ -15,6 +16,7 @@ interface ViewportPanelProps {
 
 export function ViewportPanel({
   baseFileUrl,
+  persistedRecordId,
   assetRevisionKey,
   selectionKey,
   renderOptions,
@@ -35,6 +37,7 @@ export function ViewportPanel({
     <section className="relative h-full w-full min-w-0 overflow-hidden bg-[var(--surface-2)]">
       <SceneCanvas
         baseFileUrl={baseFileUrl}
+        persistedRecordId={persistedRecordId}
         assetRevisionKey={assetRevisionKey}
         selectionKey={selectionKey}
         renderOptions={sceneRenderOptions}

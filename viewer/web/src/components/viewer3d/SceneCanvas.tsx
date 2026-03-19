@@ -13,6 +13,7 @@ const CAMERA_QUERY_PARAM = 'cam';
 
 export interface SceneCanvasProps {
   baseFileUrl: string | null;
+  persistedRecordId: string | null;
   assetRevisionKey: string | null;
   selectionKey: string | null;
   renderOptions: RenderOptions;
@@ -21,6 +22,7 @@ export interface SceneCanvasProps {
 
 export function SceneCanvas({
   baseFileUrl,
+  persistedRecordId,
   assetRevisionKey,
   selectionKey,
   renderOptions,
@@ -32,6 +34,7 @@ export function SceneCanvas({
   const { scene, camera, renderer, controls, gridGroup, axisGroup, sceneReady } = useThreeScene(containerRef);
   const { urdfSpec, jointNodes, jointFrames, loading, error } = useUrdfLoader(
     baseFileUrl,
+    persistedRecordId,
     assetRevisionKey,
     scene,
     camera,

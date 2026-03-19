@@ -7,6 +7,7 @@ import { computeFit, preserveViewAcrossModelSwitch } from './camera-utils';
 import { positionGroundHelpers } from './lighting';
 import { loadGeometryObject } from './geometry-loader';
 import { resolveVisualMaterialSpec } from './materials';
+import { ensureRecordAssets } from '@/lib/api';
 
 /** Sentinel name attached to the robot group so we can find and remove it later. */
 const ROBOT_GROUP_NAME = '__articraft_robot__';
@@ -32,6 +33,7 @@ export interface UrdfLoaderState {
  */
 export function useUrdfLoader(
   baseFileUrl: string | null,
+  persistedRecordId: string | null,
   assetRevisionKey: string | null,
   scene: THREE.Scene | null,
   camera: THREE.PerspectiveCamera | null,
@@ -65,6 +67,11 @@ export function useUrdfLoader(
       setError(null);
 
       try {
+        if (persistedRecordId) {
+          await ensureRecordAssets(persistedRecordId);
+          if (cancelled) return;
+        }
+
         // 1. Fetch URDF text.
         const urdfUrl = new URL(`${baseFileUrl}/model.urdf`, window.location.origin);
         if (assetRevisionKey) {
@@ -150,7 +157,7 @@ export function useUrdfLoader(
     return () => {
       cancelled = true;
     };
-  }, [baseFileUrl, assetRevisionKey, scene, camera, controls, gridGroup, axisGroup]);
+  }, [baseFileUrl, persistedRecordId, assetRevisionKey, scene, camera, controls, gridGroup, axisGroup]);
 
   return { urdfSpec, jointNodes, jointFrames, loading, error };
 }

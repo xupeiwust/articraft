@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
+import threading
 import time
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from storage.collections import CollectionStore
 from storage.datasets import DatasetStore
+from storage.models import CompileReport as StorageCompileReport
+from storage.models import CompileWarning
 from storage.records import RecordStore
 from storage.repo import StorageRepo
 from storage.search import SearchIndex
@@ -149,6 +154,35 @@ def _file_mtime_to_utc(path: Path) -> str | None:
         return None
 
 
+def _sha256_file(path: Path) -> str | None:
+    if not path.exists() or not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _replace_tree_from_source(source: Path, destination: Path) -> None:
+    if not source.exists() or not source.is_dir():
+        return
+    if destination.exists():
+        shutil.rmtree(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(source), str(destination))
+
+
+@dataclass(slots=True, frozen=True)
+class EnsureRecordAssetsResult:
+    record_id: str
+    status: str
+    compiled: bool
+    compile_status: str | None = None
+    materialization_status: str | None = None
+    warnings: list[str] = field(default_factory=list)
+
+
 class ViewerStore:
     def __init__(self, repo_root: Path) -> None:
         self.repo_root = repo_root.resolve()
@@ -159,6 +193,250 @@ class ViewerStore:
         self.records = RecordStore(self.repo)
         self.search = SearchIndex(self.repo)
         self.search.ensure_current()
+        self._compile_locks_guard = threading.Lock()
+        self._compile_locks: dict[str, threading.Lock] = {}
+
+    def _record_compile_lock(self, record_id: str) -> threading.Lock:
+        with self._compile_locks_guard:
+            lock = self._compile_locks.get(record_id)
+            if lock is None:
+                lock = threading.Lock()
+                self._compile_locks[record_id] = lock
+            return lock
+
+    def _record_compile_paths(
+        self,
+        record_id: str,
+        record: dict[str, Any] | None = None,
+    ) -> tuple[Path, Path, Path, Path]:
+        record_dir = self.repo.layout.record_dir(record_id)
+        artifacts = record.get("artifacts") if isinstance(record, dict) else None
+        model_name = (
+            str(artifacts.get("model_py"))
+            if isinstance(artifacts, dict) and artifacts.get("model_py")
+            else "model.py"
+        )
+        urdf_name = (
+            str(artifacts.get("model_urdf"))
+            if isinstance(artifacts, dict) and artifacts.get("model_urdf")
+            else "model.urdf"
+        )
+        compile_name = (
+            str(artifacts.get("compile_report_json"))
+            if isinstance(artifacts, dict) and artifacts.get("compile_report_json")
+            else "compile_report.json"
+        )
+        provenance_name = (
+            str(artifacts.get("provenance_json"))
+            if isinstance(artifacts, dict) and artifacts.get("provenance_json")
+            else "provenance.json"
+        )
+        return (
+            record_dir / model_name,
+            record_dir / urdf_name,
+            record_dir / compile_name,
+            record_dir / provenance_name,
+        )
+
+    def _materialization_status_for_record(self, record_id: str) -> str:
+        assets_root = self.repo.layout.record_assets_dir(record_id)
+        for child_name in ("meshes", "glb", "viewer"):
+            child = assets_root / child_name
+            if child.exists() and any(child.iterdir()):
+                return "available"
+        return "missing"
+
+    def _normalize_derived_asset_dirs(self, record_id: str) -> None:
+        record_dir = self.repo.layout.record_dir(record_id)
+        _replace_tree_from_source(
+            record_dir / "meshes",
+            self.repo.layout.record_asset_meshes_dir(record_id),
+        )
+        _replace_tree_from_source(
+            record_dir / "glb",
+            self.repo.layout.record_asset_glb_dir(record_id),
+        )
+        _replace_tree_from_source(
+            record_dir / "viewer",
+            self.repo.layout.record_asset_viewer_dir(record_id),
+        )
+
+    def _write_compile_report(
+        self,
+        *,
+        record_id: str,
+        compile_path: Path,
+        status: str,
+        warnings: list[str],
+    ) -> None:
+        existing_report = self.repo.read_json(compile_path)
+        metrics = (
+            dict(existing_report.get("metrics", {}))
+            if isinstance(existing_report, dict)
+            and isinstance(existing_report.get("metrics"), dict)
+            else {}
+        )
+        report = StorageCompileReport(
+            schema_version=1,
+            record_id=record_id,
+            status=status,
+            urdf_path="model.urdf",
+            warnings=[CompileWarning(code="warning", message=warning) for warning in warnings],
+            checks_run=["compile_urdf"],
+            metrics=metrics,
+        )
+        self.records.write_compile_report(record_id, report)
+
+    def _update_record_compile_metadata(
+        self,
+        *,
+        record_id: str,
+        record: dict[str, Any],
+        model_path: Path,
+        urdf_path: Path,
+        provenance_path: Path,
+    ) -> str:
+        record["updated_at"] = _utc_now()
+        hashes = record.setdefault("hashes", {})
+        if not isinstance(hashes, dict):
+            hashes = {}
+            record["hashes"] = hashes
+        hashes["model_py_sha256"] = _sha256_file(model_path)
+        hashes["model_urdf_sha256"] = _sha256_file(urdf_path)
+
+        derived_assets = record.setdefault("derived_assets", {})
+        if not isinstance(derived_assets, dict):
+            derived_assets = {}
+            record["derived_assets"] = derived_assets
+        derived_assets["assets_dir"] = str(derived_assets.get("assets_dir") or "assets")
+        materialization_status = self._materialization_status_for_record(record_id)
+        derived_assets["materialization_status"] = materialization_status
+
+        self.repo.write_json(self.repo.layout.record_metadata_path(record_id), record)
+
+        provenance = self.repo.read_json(provenance_path)
+        if isinstance(provenance, dict):
+            materialization = provenance.setdefault("materialization", {})
+            if not isinstance(materialization, dict):
+                materialization = {}
+                provenance["materialization"] = materialization
+            fingerprint_inputs = materialization.setdefault("fingerprint_inputs", {})
+            if not isinstance(fingerprint_inputs, dict):
+                fingerprint_inputs = {}
+                materialization["fingerprint_inputs"] = fingerprint_inputs
+            fingerprint_inputs["model_py_sha256"] = hashes["model_py_sha256"]
+            fingerprint_inputs["model_urdf_sha256"] = hashes["model_urdf_sha256"]
+            self.repo.write_json(provenance_path, provenance)
+
+        return materialization_status
+
+    def ensure_record_assets(self, record_id: str) -> EnsureRecordAssetsResult:
+        record = self.records.load_record(record_id)
+        if not isinstance(record, dict):
+            raise FileNotFoundError(f"Record not found: {record_id}")
+
+        model_path, urdf_path, compile_path, provenance_path = self._record_compile_paths(
+            record_id,
+            record,
+        )
+        compile_report = self.repo.read_json(compile_path)
+        existing_compile_status = (
+            str(compile_report.get("status"))
+            if isinstance(compile_report, dict) and isinstance(compile_report.get("status"), str)
+            else None
+        )
+        if urdf_path.exists():
+            return EnsureRecordAssetsResult(
+                record_id=record_id,
+                status="available",
+                compiled=False,
+                compile_status=existing_compile_status,
+                materialization_status=self._materialization_status_for_record(record_id),
+            )
+
+        if not model_path.exists():
+            raise FileNotFoundError(f"Record model not found: {model_path}")
+
+        lock = self._record_compile_lock(record_id)
+        with lock:
+            refreshed_record = self.records.load_record(record_id)
+            if not isinstance(refreshed_record, dict):
+                raise FileNotFoundError(f"Record not found: {record_id}")
+
+            model_path, urdf_path, compile_path, provenance_path = self._record_compile_paths(
+                record_id,
+                refreshed_record,
+            )
+            compile_report = self.repo.read_json(compile_path)
+            existing_compile_status = (
+                str(compile_report.get("status"))
+                if isinstance(compile_report, dict)
+                and isinstance(compile_report.get("status"), str)
+                else None
+            )
+            if urdf_path.exists():
+                return EnsureRecordAssetsResult(
+                    record_id=record_id,
+                    status="available",
+                    compiled=False,
+                    compile_status=existing_compile_status,
+                    materialization_status=self._materialization_status_for_record(record_id),
+                )
+
+            from agent.compiler import compile_urdf_report_maybe_timeout
+
+            sdk_package = str(refreshed_record.get("sdk_package") or "sdk")
+            try:
+                compile_result = compile_urdf_report_maybe_timeout(
+                    model_path,
+                    sdk_package=sdk_package,
+                )
+            except Exception as exc:
+                warnings = getattr(exc, "warnings", None)
+                warning_lines = (
+                    [str(item) for item in warnings] if isinstance(warnings, list) else []
+                )
+                if not warning_lines:
+                    warning_lines = [str(exc)]
+                self._write_compile_report(
+                    record_id=record_id,
+                    compile_path=compile_path,
+                    status="failure",
+                    warnings=warning_lines,
+                )
+                self._update_record_compile_metadata(
+                    record_id=record_id,
+                    record=refreshed_record,
+                    model_path=model_path,
+                    urdf_path=urdf_path,
+                    provenance_path=provenance_path,
+                )
+                raise RuntimeError(f"Failed to compile assets for {record_id}: {exc}") from exc
+
+            self.repo.write_text(urdf_path, compile_result.urdf_xml)
+            self._normalize_derived_asset_dirs(record_id)
+            warning_lines = [str(item) for item in compile_result.warnings]
+            self._write_compile_report(
+                record_id=record_id,
+                compile_path=compile_path,
+                status="success",
+                warnings=warning_lines,
+            )
+            materialization_status = self._update_record_compile_metadata(
+                record_id=record_id,
+                record=refreshed_record,
+                model_path=model_path,
+                urdf_path=urdf_path,
+                provenance_path=provenance_path,
+            )
+            return EnsureRecordAssetsResult(
+                record_id=record_id,
+                status="compiled",
+                compiled=True,
+                compile_status="success",
+                materialization_status=materialization_status,
+                warnings=warning_lines,
+            )
 
     def _read_jsonl(self, path: Path) -> list[dict[str, Any]]:
         if not path.exists():

@@ -14,6 +14,7 @@ from viewer.api.schemas import (
     DatasetEntryResponse,
     DeleteRecordResponse,
     DeleteStagingResponse,
+    EnsureRecordAssetsResponse,
     HealthResponse,
     OpenRecordFolderResponse,
     OpenStagingFolderResponse,
@@ -91,6 +92,14 @@ def create_app(*, repo_root: Path | None = None) -> FastAPI:
         ".obj": "model/obj",
     }
 
+    def should_attempt_compile_for_record_path(file_path: str) -> bool:
+        requested_path = Path(file_path)
+        if requested_path.parts == ("model.urdf",):
+            return True
+        if requested_path.parts and requested_path.parts[0] in {"meshes", "glb", "viewer"}:
+            return True
+        return False
+
     def resolve_record_target(record_id: str, file_path: str) -> tuple[Path, Path]:
         if not record_id.startswith("rec_"):
             raise HTTPException(status_code=400, detail="Invalid record ID format")
@@ -110,7 +119,7 @@ def create_app(*, repo_root: Path | None = None) -> FastAPI:
         direct_target = (record_dir / requested_path).resolve()
         if direct_target.exists():
             target = direct_target
-        elif requested_path.parts and requested_path.parts[0] == "meshes":
+        elif requested_path.parts and requested_path.parts[0] in {"meshes", "glb", "viewer"}:
             target = (record_dir / "assets" / requested_path).resolve()
         else:
             target = direct_target
@@ -124,6 +133,22 @@ def create_app(*, repo_root: Path | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
         return record_dir, target
+
+    async def resolve_record_target_with_compile(
+        record_id: str, file_path: str
+    ) -> tuple[Path, Path]:
+        try:
+            return resolve_record_target(record_id, file_path)
+        except HTTPException as exc:
+            if exc.status_code != 404 or not should_attempt_compile_for_record_path(file_path):
+                raise
+        try:
+            await asyncio.to_thread(app.state.viewer_store.ensure_record_assets, record_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        return resolve_record_target(record_id, file_path)
 
     def resolve_staging_root(run_id: str, record_id: str) -> Path:
         if not run_id.startswith("run_"):
@@ -335,6 +360,30 @@ def create_app(*, repo_root: Path | None = None) -> FastAPI:
             updated_at=updated.get("updated_at"),
         )
 
+    @app.post(
+        "/api/records/{record_id}/ensure-assets",
+        response_model=EnsureRecordAssetsResponse,
+    )
+    async def ensure_record_assets(record_id: str) -> EnsureRecordAssetsResponse:
+        if not record_id.startswith("rec_"):
+            raise HTTPException(status_code=400, detail="Invalid record ID format")
+
+        try:
+            result = await asyncio.to_thread(app.state.viewer_store.ensure_record_assets, record_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+        return EnsureRecordAssetsResponse(
+            record_id=result.record_id,
+            status=result.status,
+            compiled=result.compiled,
+            compile_status=result.compile_status,
+            materialization_status=result.materialization_status,
+            warnings=list(result.warnings),
+        )
+
     @app.get(
         "/api/records/{record_id}/text/{file_path:path}", response_model=RecordTextFileResponse
     )
@@ -344,7 +393,7 @@ def create_app(*, repo_root: Path | None = None) -> FastAPI:
         preview_bytes: int = Query(default=131072, ge=4096, le=1048576),
         full: bool = False,
     ) -> RecordTextFileResponse:
-        _, target = resolve_record_target(record_id, file_path)
+        _, target = await resolve_record_target_with_compile(record_id, file_path)
         if target.suffix.lower() not in text_media_types:
             raise HTTPException(
                 status_code=400, detail="Text preview is only supported for text files"
@@ -368,7 +417,7 @@ def create_app(*, repo_root: Path | None = None) -> FastAPI:
     @app.get("/api/records/{record_id}/files/{file_path:path}")
     async def record_file(record_id: str, file_path: str) -> FileResponse:
         """Serve files from a record directory (URDF, meshes, code, etc.)"""
-        _, target = resolve_record_target(record_id, file_path)
+        _, target = await resolve_record_target_with_compile(record_id, file_path)
         suffix = target.suffix.lower()
         media_type = media_type_map.get(suffix, "application/octet-stream")
 

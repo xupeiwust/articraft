@@ -339,6 +339,7 @@ export default function ViewerShell(): JSX.Element {
   }, [bootstrap, selection]);
   const assetRevisionKey =
     selection?.kind === "staging" ? selectedStagingEntry?.checkpoint_updated_at ?? null : null;
+  const persistedRecordId = selection?.kind === "record" ? selection.recordId : null;
   const selectionKey = selection
     ? selection.kind === "record"
       ? selection.recordId
@@ -360,6 +361,7 @@ export default function ViewerShell(): JSX.Element {
         <ResizablePanel defaultSize="55%" className="min-w-0">
           <ViewportPanel
             baseFileUrl={baseFileUrl}
+            persistedRecordId={persistedRecordId}
             assetRevisionKey={assetRevisionKey}
             selectionKey={selectionKey}
             renderOptions={renderOptions}
