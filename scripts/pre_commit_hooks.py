@@ -15,7 +15,7 @@ FORBIDDEN_PATHS = (
     re.compile(r"^data/records/[^/]+/assets(?:/|$)"),
 )
 SECRET_PATTERNS = (
-    ("OpenAI API key assignment", re.compile(r"OPENAI_API_KEY\s*=\s*['\"]?[^'\"\s]+")),
+    ("OpenAI API key assignment", re.compile(r"OPENAI_API_KEYS?\s*=\s*['\"]?[^'\"\s]+")),
     ("Gemini API keys assignment", re.compile(r"GEMINI_API_KEYS\s*=\s*['\"]?[^'\"\s]+")),
     ("OpenAI secret token", re.compile(r"\bsk-[A-Za-z0-9_-]{16,}\b")),
     (
