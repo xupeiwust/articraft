@@ -9,6 +9,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import platform
 import shutil
 import subprocess
@@ -31,10 +32,11 @@ from agent.prompts import (
     SUPPORTED_SDK_DOCS_MODES,
     load_sdk_docs_reference,
     load_system_prompt_text,
+    normalize_sdk_package,
     resolve_system_prompt_path,
 )
 from agent.providers.gemini import GeminiLLM, gemini_client_config_from_env
-from agent.providers.openai import OpenAILLM, openai_api_keys_from_env
+from agent.providers.openai import OpenAILLM
 from agent.tools import (
     build_first_turn_messages as _build_first_turn_messages,
 )
@@ -1686,6 +1688,11 @@ def main(argv: list[str] | None = None) -> int:
             "to reduce prompt size; `none` disables injected SDK docs entirely."
         ),
     )
+    parser.add_argument(
+        "--sdk-package",
+        default="sdk",
+        help="SDK package to use for prompt selection, scaffolding, and compilation.",
+    )
     args = parser.parse_args(argv)
     if args.collection == "dataset":
         if not args.dataset_id:
@@ -1695,7 +1702,12 @@ def main(argv: list[str] | None = None) -> int:
     elif args.dataset_id:
         parser.error("--dataset-id is only supported with --collection dataset.")
 
-    sdk_package = "sdk"
+    try:
+        sdk_package = normalize_sdk_package(args.sdk_package)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
     openai_reasoning_summary = "auto"
 
     if args.provider != "openai" and args.openai_transport != "http":
@@ -1756,11 +1768,8 @@ def main(argv: list[str] | None = None) -> int:
             print(str(exc), file=sys.stderr)
             return 1
     elif args.provider == "openai":
-        if not openai_api_keys_from_env():
-            print(
-                "OPENAI_API_KEYS or OPENAI_API_KEY environment variable is required.",
-                file=sys.stderr,
-            )
+        if not os.environ.get("OPENAI_API_KEY"):
+            print("OPENAI_API_KEY environment variable is required.", file=sys.stderr)
             return 1
 
     model_id = args.model
