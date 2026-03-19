@@ -5,7 +5,7 @@ import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agent.runner import rerun_record_in_place
+from agent.runner import create_workbench_draft_record, rerun_record_in_place
 from cli.common import add_data_root_argument
 from storage.collections import CollectionStore
 from storage.models import WorkbenchCollection
@@ -45,6 +45,75 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("init-storage", help="Create the canonical data/ directory layout.")
+    init_record = subparsers.add_parser(
+        "init-record",
+        help="Create an empty draft workbench record from a prompt without running generation.",
+    )
+    init_record.add_argument("prompt", help="Prompt text to store with the draft record.")
+    init_record.add_argument(
+        "--provider",
+        default="openai",
+        choices=("openai", "gemini"),
+        help="LLM provider metadata to attach to the draft record.",
+    )
+    init_record.add_argument(
+        "--model-id",
+        default=None,
+        help="Model ID metadata to attach. Defaults to the provider's current default for the chosen thinking level.",
+    )
+    init_record.add_argument(
+        "--thinking-level",
+        default="high",
+        help="Thinking level metadata to attach to the draft provenance.",
+    )
+    init_record.add_argument(
+        "--openai-transport",
+        default="http",
+        help="OpenAI transport metadata to attach when provider=openai.",
+    )
+    init_record.add_argument(
+        "--openai-reasoning-summary",
+        default="auto",
+        help="OpenAI reasoning summary metadata to attach when provider=openai.",
+    )
+    init_record.add_argument(
+        "--max-turns",
+        type=int,
+        default=30,
+        help="Max-turns metadata to attach to the draft provenance.",
+    )
+    init_record.add_argument(
+        "--system-prompt-path",
+        default="designer_system_prompt.txt",
+        help="System prompt file metadata to attach to the draft provenance.",
+    )
+    init_record.add_argument(
+        "--sdk-package",
+        default="sdk",
+        help="SDK package metadata to attach to the draft record.",
+    )
+    init_record.add_argument(
+        "--sdk-docs-mode",
+        default="full",
+        help="SDK docs mode metadata to attach to the draft provenance.",
+    )
+    init_record.add_argument(
+        "--label",
+        default=None,
+        help="Optional workbench label and display title override.",
+    )
+    init_record.add_argument(
+        "--tag",
+        dest="tags",
+        action="append",
+        default=None,
+        help="Optional workbench tag. Repeat to attach multiple tags.",
+    )
+    init_record.add_argument(
+        "--record-id",
+        default=None,
+        help="Optional explicit record ID. Defaults to a generated rec_* identifier.",
+    )
     subparsers.add_parser("rebuild-search-index", help="Rebuild the cached viewer search index.")
     rerun = subparsers.add_parser(
         "rerun-record",
@@ -84,6 +153,38 @@ def main(argv: list[str] | None = None) -> int:
         record_count = len(queries.list_record_ids())
         workbench_entries = (collections.load_workbench() or {}).get("entries", [])
         print(f"records={record_count} workbench_entries={len(workbench_entries)}")
+        return 0
+
+    if args.command == "init-record":
+        try:
+            record_dir = create_workbench_draft_record(
+                repo_root=args.repo_root,
+                prompt_text=args.prompt,
+                provider=args.provider,
+                model_id=args.model_id,
+                openai_transport=args.openai_transport,
+                thinking_level=args.thinking_level,
+                max_turns=args.max_turns,
+                system_prompt_path=args.system_prompt_path,
+                sdk_package=args.sdk_package,
+                sdk_docs_mode=args.sdk_docs_mode,
+                openai_reasoning_summary=args.openai_reasoning_summary,
+                label=args.label,
+                tags=args.tags,
+                record_id=args.record_id,
+            )
+        except ValueError as exc:
+            print(str(exc))
+            return 1
+
+        stats = search.rebuild()
+        print(f"initialized record_id={record_dir.name} record_dir={record_dir}")
+        print(
+            f"search_index={stats.path} "
+            f"records={stats.record_count} "
+            f"categories={stats.category_count} "
+            f"workbench_entries={stats.workbench_entry_count}"
+        )
         return 0
 
     if args.command == "rebuild-search-index":

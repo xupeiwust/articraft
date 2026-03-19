@@ -76,6 +76,47 @@ wb prompt model_arg="model=gpt-5.4" thinking_arg="thinking=high":
       --model "$model" \
       --thinking "$thinking"
 
+wb-init prompt model_arg="model=gpt-5.4" thinking_arg="thinking=high":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    raw_model={{ quote(model_arg) }}
+    raw_thinking={{ quote(thinking_arg) }}
+    case "$raw_model" in
+      model=*)
+        model="${raw_model#model=}"
+        ;;
+      *)
+        model="$raw_model"
+        ;;
+    esac
+    case "$raw_thinking" in
+      thinking=*)
+        thinking="${raw_thinking#thinking=}"
+        ;;
+      *)
+        thinking="$raw_thinking"
+        ;;
+    esac
+    case "$model" in
+      gpt-*|o1*|o3*|o4*)
+        provider="openai"
+        ;;
+      gemini-*)
+        provider="gemini"
+        ;;
+      *)
+        echo "Unable to infer provider for model '$model'. Supported model prefixes: gpt-, o1, o3, o4, gemini-." >&2
+        exit 1
+        ;;
+    esac
+    exec uv run articraft-workbench \
+      --repo-root . \
+      init-record \
+      {{ quote(prompt) }} \
+      --provider "$provider" \
+      --model-id "$model" \
+      --thinking-level "$thinking"
+
 dataset-validate:
     uv run articraft-dataset --repo-root . validate
 

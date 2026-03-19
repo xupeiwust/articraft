@@ -79,6 +79,14 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 MAX_SINGLE_RUN_SLUG_LEN = 120
+_DRAFT_MODEL_TEMPLATE = """from __future__ import annotations
+
+# Draft scaffold created by `articraft-workbench init-record`.
+# The target prompt for this record is stored in prompt.txt.
+# Replace this file with a valid Articraft model implementation.
+
+object_model = None
+"""
 
 
 def compile_urdf(script_path: Path, *, sdk_package: str = "sdk") -> str:
@@ -411,6 +419,165 @@ def _load_workbench_entry(collections: CollectionStore, *, record_id: str) -> di
         if isinstance(entry, dict) and str(entry.get("record_id") or "") == record_id:
             return entry
     return None
+
+
+def create_workbench_draft_record(
+    *,
+    repo_root: Path,
+    prompt_text: str,
+    provider: str = "openai",
+    model_id: str | None = None,
+    openai_transport: str = "http",
+    thinking_level: str = "high",
+    max_turns: int = 30,
+    system_prompt_path: str = "designer_system_prompt.txt",
+    sdk_package: str = "sdk",
+    sdk_docs_mode: str = "full",
+    openai_reasoning_summary: str | None = "auto",
+    label: str | None = None,
+    tags: Optional[list[str]] = None,
+    record_id: str | None = None,
+) -> Path:
+    normalized_prompt = prompt_text.strip()
+    if not normalized_prompt:
+        raise ValueError("Prompt is required.")
+
+    resolved_repo_root = repo_root.resolve()
+    storage_repo = StorageRepo(resolved_repo_root)
+    storage_repo.ensure_layout()
+    record_store = RecordStore(storage_repo)
+    collections = CollectionStore(storage_repo)
+    collections.ensure_workbench()
+
+    context = _build_single_run_context(
+        repo_root=resolved_repo_root,
+        prompt=normalized_prompt,
+        storage_repo=storage_repo,
+        record_id=record_id,
+    )
+    if storage_repo.layout.record_dir(context.record_id).exists():
+        raise ValueError(f"Record already exists: {context.record_id}")
+
+    selected_model_id = _default_model_id(
+        provider=provider,
+        model_id=model_id,
+        thinking_level=thinking_level,
+        openai_transport=openai_transport,
+        openai_reasoning_summary=openai_reasoning_summary,
+    )
+    loaded_system_prompt_path = resolve_system_prompt_path(
+        system_prompt_path,
+        provider=provider,
+        sdk_package=sdk_package,
+        repo_root=resolved_repo_root,
+    )
+
+    record_store.ensure_record_dirs(context.record_id)
+    storage_repo.write_text(context.record_prompt_path, normalized_prompt)
+    storage_repo.write_text(context.record_model_path, _DRAFT_MODEL_TEMPLATE)
+
+    compile_report = StorageCompileReport(
+        schema_version=1,
+        record_id=context.record_id,
+        status="draft",
+        urdf_path="model.urdf",
+        warnings=[],
+        checks_run=[],
+        metrics={},
+    )
+    record_store.write_compile_report(context.record_id, compile_report)
+
+    prompt_sha = _sha256_text(normalized_prompt)
+    model_py_sha = _sha256_file(context.record_model_path)
+
+    provenance = Provenance(
+        schema_version=1,
+        record_id=context.record_id,
+        generation=GenerationSettings(
+            provider=provider,
+            model_id=selected_model_id,
+            thinking_level=thinking_level,
+            openai_transport=openai_transport if provider == "openai" else None,
+            openai_reasoning_summary=openai_reasoning_summary if provider == "openai" else None,
+            max_turns=max_turns,
+        ),
+        prompting=PromptingSettings(
+            system_prompt_file=loaded_system_prompt_path.name,
+            system_prompt_sha256=_sha256_file(loaded_system_prompt_path),
+            sdk_docs_mode=sdk_docs_mode,
+        ),
+        sdk=SdkSettings(
+            sdk_package=sdk_package,
+            sdk_version="workspace",
+            sdk_fingerprint=None,
+        ),
+        environment=EnvironmentSettings(
+            python_version=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            platform=_platform_id(),
+            git_commit=_detect_git_commit(resolved_repo_root),
+            uv_lock_sha256=_detect_uv_lock_sha256(resolved_repo_root),
+        ),
+        run_summary=RunSummary(
+            turn_count=0,
+            tool_call_count=0,
+            compile_attempt_count=0,
+            final_status="draft",
+        ),
+        materialization=MaterializationInputs(
+            model_py_sha256=model_py_sha,
+            model_urdf_sha256=None,
+            sdk_fingerprint=None,
+        ),
+    )
+    record_store.write_provenance(context.record_id, provenance)
+
+    record = Record(
+        schema_version=1,
+        record_id=context.record_id,
+        created_at=context.created_at,
+        updated_at=context.created_at,
+        rating=None,
+        kind="draft_model",
+        prompt_kind="single_prompt",
+        category_slug=None,
+        source=SourceRef(run_id=None),
+        sdk_package=sdk_package,
+        provider=provider,
+        model_id=selected_model_id,
+        display=DisplayMetadata(
+            title=_display_title(normalized_prompt, label=label),
+            prompt_preview=_prompt_preview(normalized_prompt),
+        ),
+        artifacts=RecordArtifacts(
+            prompt_txt="prompt.txt",
+            prompt_series_json=None,
+            model_py="model.py",
+            model_urdf="model.urdf",
+            compile_report_json="compile_report.json",
+            provenance_json="provenance.json",
+            cost_json=None,
+            inputs_dir="inputs",
+            assets_dir="assets",
+        ),
+        hashes=RecordHashes(
+            prompt_sha256=prompt_sha,
+            model_py_sha256=model_py_sha,
+            model_urdf_sha256=None,
+        ),
+        derived_assets=DerivedAssets(
+            assets_dir="assets",
+            materialization_status="missing",
+        ),
+        collections=["workbench"],
+    )
+    record_store.write_record(record)
+    collections.append_workbench_entry(
+        record_id=context.record_id,
+        added_at=context.created_at,
+        label=label,
+        tags=list(tags or []),
+    )
+    return context.record_dir
 
 
 def _write_success_record(

@@ -66,3 +66,71 @@ def test_workbench_rerun_record_command(
     captured = capsys.readouterr().out
     assert f"reran record_id={record_dir.name}" in captured
     assert "search_index=" in captured
+
+
+def test_workbench_init_record_command(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo_root = tmp_path
+
+    assert (
+        workbench_main(
+            [
+                "--repo-root",
+                str(repo_root),
+                "init-record",
+                "build a folding reading lamp",
+                "--provider",
+                "openai",
+                "--model-id",
+                "gpt-5.4",
+                "--thinking-level",
+                "high",
+                "--label",
+                "reading lamp draft",
+                "--tag",
+                "draft",
+                "--tag",
+                "lamp",
+            ]
+        )
+        == 0
+    )
+
+    records = sorted((repo_root / "data" / "records").iterdir())
+    assert len(records) == 1
+    record_dir = records[0]
+
+    record = json.loads((record_dir / "record.json").read_text(encoding="utf-8"))
+    assert record["record_id"] == record_dir.name
+    assert record["kind"] == "draft_model"
+    assert record["provider"] == "openai"
+    assert record["model_id"] == "gpt-5.4"
+    assert record["collections"] == ["workbench"]
+    assert record["display"]["title"] == "reading lamp draft"
+
+    assert (record_dir / "prompt.txt").read_text(encoding="utf-8") == "build a folding reading lamp"
+    model_text = (record_dir / "model.py").read_text(encoding="utf-8")
+    assert "Draft scaffold created by `articraft-workbench init-record`." in model_text
+
+    compile_report = json.loads((record_dir / "compile_report.json").read_text(encoding="utf-8"))
+    assert compile_report["status"] == "draft"
+
+    provenance = json.loads((record_dir / "provenance.json").read_text(encoding="utf-8"))
+    assert provenance["generation"]["provider"] == "openai"
+    assert provenance["generation"]["model_id"] == "gpt-5.4"
+    assert provenance["run_summary"]["final_status"] == "draft"
+
+    workbench = json.loads(
+        (repo_root / "data" / "local" / "workbench.json").read_text(encoding="utf-8")
+    )
+    assert workbench["entries"][0]["record_id"] == record_dir.name
+    assert workbench["entries"][0]["label"] == "reading lamp draft"
+    assert workbench["entries"][0]["tags"] == ["draft", "lamp"]
+
+    assert (repo_root / "data" / "cache" / "search.sqlite").exists()
+
+    captured = capsys.readouterr().out
+    assert f"initialized record_id={record_dir.name}" in captured
+    assert "search_index=" in captured

@@ -21,6 +21,7 @@ just viewer-api             # Start only the API server
 just viewer-web-lint        # ESLint on viewer/web
 just viewer-web-typecheck   # TypeScript type-check on viewer/web
 just wb "prompt text"       # Generate an object from a prompt (workbench mode)
+just wb-init "prompt text"  # Create a draft workbench record without running generation
 just compile data/records/<id>  # Recompile a record's model.py → model.urdf
 just rerun data/records/<id>    # Re-run generation for an existing record in-place
 just search-index           # Rebuild the workbench search index
