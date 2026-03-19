@@ -102,6 +102,7 @@ def test_storage_repo_round_trips_records_collections_and_runs(tmp_path: Path) -
         record_id="rec_123",
         status="success",
         urdf_path="model.urdf",
+        warnings=[],
     )
     record_store.write_compile_report("rec_123", report)
     assert (repo.layout.record_dir("rec_123") / "compile_report.json").exists()

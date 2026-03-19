@@ -3,9 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from agent.compiler import _warn_geometry_scale_anomalies
+from agent.feedback import build_compile_signal_bundle
 from agent.harness import ArticraftAgent
 from agent.models import CompileReport
 from sdk import ArticulatedObject, Box, Cylinder
+from sdk import TestReport as SDKTestReport
 
 
 def test_absurd_dimension_warning() -> None:
@@ -49,26 +51,70 @@ def test_outlier_dimension_warning() -> None:
     assert any("geometry outlier dimensions detected" in warning for warning in warnings)
 
 
-def test_harness_injects_important_compile_warnings() -> None:
+def test_compile_signal_bundle_includes_test_warnings_and_allowances() -> None:
+    warnings = [
+        "IMPORTANT: URDF compile warning (non-blocking): geometry outlier dimensions detected.\n"
+        "- link='boom' source='visual' index=0 geometry='Cylinder' dims=(0.06, 0.06, 20)m"
+    ]
+    bundle = build_compile_signal_bundle(
+        status="success",
+        warnings=warnings,
+        test_report=SDKTestReport(
+            passed=True,
+            checks_run=1,
+            checks=("check_no_overlaps",),
+            failures=(),
+            warnings=("neighbor overlaps downgraded to warnings",),
+            allowances=("allow_overlap('door', 'frame'): hinge nesting",),
+        ),
+    )
+
+    assert any(signal.kind == "geometry_scale" for signal in bundle.signals)
+    assert any(signal.kind == "test_warning" for signal in bundle.signals)
+    assert any(signal.kind == "allowance" for signal in bundle.signals)
+
+
+def test_harness_injects_structured_compile_signals() -> None:
     agent = ArticraftAgent.__new__(ArticraftAgent)
-    agent._seen_compile_warning_sigs = set()
+    agent._seen_compile_signal_sigs = set()
     agent.trace_writer = None
 
-    conversation: list[dict] = []
-    injected = agent._maybe_inject_compile_warnings(
-        conversation,
-        report=CompileReport(
-            urdf_xml="<robot/>",
+    report = CompileReport(
+        urdf_xml="<robot/>",
+        warnings=[
+            "IMPORTANT: URDF compile warning (non-blocking): geometry outlier dimensions detected.\n"
+            "- link='boom' source='visual' index=0 geometry='Cylinder' dims=(0.06, 0.06, 20)m"
+        ],
+        signal_bundle=build_compile_signal_bundle(
+            status="success",
             warnings=[
                 "IMPORTANT: URDF compile warning (non-blocking): geometry outlier dimensions detected.\n"
                 "- link='boom' source='visual' index=0 geometry='Cylinder' dims=(0.06, 0.06, 20)m"
             ],
+            test_report=SDKTestReport(
+                passed=True,
+                checks_run=2,
+                checks=("check_no_overlaps", "check_visuals"),
+                failures=(),
+                warnings=("visual connectivity drift detected",),
+                allowances=("allow_overlap('door', 'frame'): hinge nesting",),
+            ),
         ),
+    )
+
+    conversation: list[dict] = []
+    injected = agent._maybe_inject_compile_signals(
+        conversation,
+        bundle=report.signal_bundle,
     )
 
     assert injected is True
     assert conversation
-    assert "IMPORTANT" in conversation[0]["content"]
-    assert "visual and structural sensors" in conversation[0]["content"]
-    assert "wrong geometric representation" in conversation[0]["content"]
-    assert "hero feature" in conversation[0]["content"]
+    assert "<compile_signals>" in conversation[0]["content"]
+    assert "<summary>" in conversation[0]["content"]
+    assert "<warnings>" in conversation[0]["content"]
+    assert "<notes>" in conversation[0]["content"]
+    assert "<response_rules>" in conversation[0]["content"]
+    assert "Geometry outlier dimensions detected." in conversation[0]["content"]
+    assert "visual connectivity drift detected" in conversation[0]["content"]
+    assert "hinge nesting" in conversation[0]["content"]

@@ -16,8 +16,12 @@ from agent.compiler import (
     persist_compile_success_artifacts,
 )
 from agent.cost import CostTracker, pricing_for_provider_model
-from agent.feedback import contains_code_in_text, format_compile_exception
-from agent.models import AgentResult, CompileReport, TerminateReason
+from agent.feedback import (
+    compile_signal_bundle_from_exception,
+    contains_code_in_text,
+    render_compile_signals,
+)
+from agent.models import AgentResult, CompileReport, CompileSignalBundle, TerminateReason
 from agent.prompts import (
     load_sdk_docs_reference,
     load_system_prompt_text,
@@ -85,10 +89,9 @@ class ArticraftAgent:
         self.max_turns = max_turns
         self.sdk_package = _normalize_sdk_package(sdk_package)
         self.sdk_docs_mode = _normalize_sdk_docs_mode(sdk_docs_mode)
-        self._last_compile_warning_text: Optional[str] = None
-        self._seen_compile_warning_sigs: set[str] = set()
+        self._seen_compile_signal_sigs: set[str] = set()
         self._seen_tool_error_sigs: set[str] = set()
-        self._last_compile_error_sig: Optional[str] = None
+        self._last_compile_failure_sig: Optional[str] = None
         self._post_success_design_audit_sent = False
         self.checkpoint_urdf_path = (
             Path(checkpoint_urdf_path).resolve() if checkpoint_urdf_path else None
@@ -159,56 +162,27 @@ class ArticraftAgent:
         if self.trace_writer:
             self.trace_writer.write_system_prompt(self.system_prompt)
 
-    def _maybe_inject_compile_warnings(
+    def _compile_signal_signature(self, bundle: CompileSignalBundle) -> str:
+        sig_src = json.dumps(bundle.to_dict(), sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )
+        return hashlib.sha1(sig_src).hexdigest()
+
+    def _maybe_inject_compile_signals(
         self,
         conversation: list[dict],
         *,
-        report: CompileReport,
+        bundle: CompileSignalBundle,
     ) -> bool:
-        warnings = getattr(report, "warnings", None)
-        if not isinstance(warnings, list) or not warnings:
+        if not any(signal.severity == "warning" for signal in bundle.signals):
             return False
 
-        interesting: list[str] = []
-        for warning in warnings:
-            if not isinstance(warning, str):
-                continue
-            if (
-                "IMPORTANT:" in warning
-                or "non-finite or absurd geometry dimensions detected" in warning
-                or "geometry outlier dimensions detected" in warning
-                or "visual connectivity check failed" in warning
-                or "cwd-relative asset paths detected" in warning
-                or "isolated parts detected" in warning
-            ):
-                interesting.append(warning.strip())
-
-        if not interesting:
+        sig = self._compile_signal_signature(bundle)
+        if sig in self._seen_compile_signal_sigs:
             return False
+        self._seen_compile_signal_sigs.add(sig)
 
-        try:
-            sig_src = json.dumps(interesting, sort_keys=False, separators=(",", ":")).encode(
-                "utf-8"
-            )
-            sig = hashlib.sha1(sig_src).hexdigest()
-        except Exception:
-            sig = None
-
-        if sig and sig in self._seen_compile_warning_sigs:
-            return False
-        if sig:
-            self._seen_compile_warning_sigs.add(sig)
-
-        content = (
-            "WARNING: The harness detected IMPORTANT issues that will likely look wrong in the viewer "
-            "(even if collision-based checks pass). Treat these warnings as visual and structural sensors:\n\n"
-            + "\n\n".join(interesting)
-            + "\n\nDecide whether each issue is a local placement bug, a wrong geometric representation, "
-            "or a broader composition problem. Fix it at the right level. If a warning reveals a blocked "
-            "hero feature or a bad placeholder shape, replace that representation instead of tuning around it. "
-            "Do not weaken tests."
-        )
-        msg = {"role": "user", "content": content}
+        msg = {"role": "user", "content": render_compile_signals(bundle)}
         conversation.append(msg)
         if self.trace_writer:
             self.trace_writer.write_message(msg)
@@ -238,9 +212,11 @@ class ArticraftAgent:
             msg = {
                 "role": "user",
                 "content": (
-                    "Your last edit_code failed because `old_string` did not match the file exactly. "
-                    "Do NOT guess. Call `read_code` again, then pick a smaller exact snippet from the "
-                    "current file as `old_string` and retry. Keep edits surgical."
+                    "<edit_retry_guidance>\n"
+                    "- Your last edit_code failed because `old_string` did not match the file exactly.\n"
+                    "- Do NOT guess. Call `read_code` again, then pick a smaller exact snippet from the current file as `old_string` and retry.\n"
+                    "- Keep edits surgical.\n"
+                    "</edit_retry_guidance>"
                 ),
             }
             conversation.append(msg)
@@ -248,40 +224,16 @@ class ArticraftAgent:
                 self.trace_writer.write_message(msg)
             return
 
-    def _append_compile_retry_message(
+    def _append_compile_failure_signals(
         self,
         conversation: list[dict],
         *,
-        formatted: str,
+        bundle: CompileSignalBundle,
     ) -> str:
-        text = (formatted or "").strip()
-        try:
-            sig = hashlib.sha1(text.encode("utf-8")).hexdigest()
-        except Exception:
-            sig = None
-
-        if sig and sig == self._last_compile_error_sig:
-            first_line = next(
-                (line for line in text.splitlines() if line.strip()),
-                "URDF compile failed.",
-            )
-            content = (
-                f"{first_line}\n"
-                "Same compile failure as previous turn (details unchanged).\n\n"
-                "Treat this as a repeated diagnostic signal. Decide whether the root cause is a local bug, "
-                "a wrong representation, or a wrong overall composition. If this failure class repeats, stop "
-                "patching symptoms and rewrite the affected region from the root cause. Preserve structural "
-                "quality, but do not preserve a visually wrong scaffold."
-            )
-        else:
-            if sig:
-                self._last_compile_error_sig = sig
-            content = (
-                text
-                + "\n\nTreat this failure as a diagnostic signal. Decide whether it indicates a local bug, "
-                "a wrong geometric representation, or a wrong overall composition, then fix it at that level. "
-                "Keep the object visually rich and faithful to the prompt, not merely acceptable to QC."
-            )
+        sig = self._compile_signal_signature(bundle)
+        repeated = sig == self._last_compile_failure_sig
+        self._last_compile_failure_sig = sig
+        content = render_compile_signals(bundle, repeated=repeated)
 
         msg = {"role": "user", "content": content}
         conversation.append(msg)
@@ -295,12 +247,15 @@ class ArticraftAgent:
 
         content = (
             "Compile passed. Do a final design audit before concluding.\n\n"
-            "Check whether:\n"
-            "- the prompt's hero features are prominent and unobscured\n"
-            "- the dominant silhouette reads correctly\n"
-            "- materials, proportions, and visible structure support realism\n"
-            "- your tests prove the important prompt-specific claims, not just generic validity\n\n"
-            "If any of those are weak, keep editing."
+            "<design_audit>\n"
+            "- Check whether the prompt's hero features are prominent and unobscured.\n"
+            "- Check whether the dominant silhouette reads correctly.\n"
+            "- Check whether materials, proportions, and visible structure support realism.\n"
+            "- Check whether your tests prove the important prompt-specific claims, not just generic validity.\n"
+            "</design_audit>\n\n"
+            "<continue_if_needed>\n"
+            "- If any of those are weak, keep editing.\n"
+            "</continue_if_needed>"
         )
         msg = {"role": "user", "content": content}
         conversation.append(msg)
@@ -390,29 +345,37 @@ class ArticraftAgent:
     def _code_paste_nudge_text(self) -> str:
         if self.provider == "openai":
             return (
-                "Do not paste code in your response. "
-                "Use tools to apply your changes. "
-                "Use read_file to fetch exact current lines, then apply_patch for edits. "
-                "Do not provide file_path."
+                "<tool_use_rules>\n"
+                "- Do not paste code in your response.\n"
+                "- Use tools to apply your changes.\n"
+                "- Use read_file to fetch exact current lines, then apply_patch for edits.\n"
+                "- Do not provide file_path.\n"
+                "</tool_use_rules>"
             )
         return (
-            "Do not paste code in your response. "
-            "Use tools to apply your changes. "
-            "Use read_code to fetch exact current text, then edit_code for edits. "
-            'If the editable section is empty, initialize it with edit_code using old_string="".'
+            "<tool_use_rules>\n"
+            "- Do not paste code in your response.\n"
+            "- Use tools to apply your changes.\n"
+            "- Use read_code to fetch exact current text, then edit_code for edits.\n"
+            '- If the editable section is empty, initialize it with edit_code using old_string="".\n'
+            "</tool_use_rules>"
         )
 
     def _first_turn_tool_nudge_text(self) -> str:
         if self.provider == "openai":
             return (
-                "Begin with a tool call. "
-                "Use read_file first to inspect the file, then apply_patch for changes. "
-                "Do not provide file_path."
+                "<first_turn_tool_nudge>\n"
+                "- Begin with a tool call.\n"
+                "- Use read_file first to inspect the file, then apply_patch for changes.\n"
+                "- Do not provide file_path.\n"
+                "</first_turn_tool_nudge>"
             )
         return (
-            "Begin with a tool call. Use read_code first to inspect the editable "
-            "section, then use edit_code for changes. If the editable section is "
-            'empty, initialize it with edit_code using old_string="".'
+            "<first_turn_tool_nudge>\n"
+            "- Begin with a tool call.\n"
+            "- Use read_code first to inspect the editable section, then use edit_code for changes.\n"
+            '- If the editable section is empty, initialize it with edit_code using old_string="".\n'
+            "</first_turn_tool_nudge>"
         )
 
     def _tool_call_name(self, tool_call: dict) -> str:
@@ -848,18 +811,21 @@ class ArticraftAgent:
                         duration=compile_duration,
                         warnings=report.warnings,
                     )
-                    injected = self._maybe_inject_compile_warnings(conversation, report=report)
+                    injected = self._maybe_inject_compile_signals(
+                        conversation,
+                        bundle=report.signal_bundle,
+                    )
                     if injected:
                         continue
                     if self._maybe_inject_post_success_design_audit(conversation):
                         continue
                 except TimeoutError as exc:
-                    formatted = f"URDF compile failed: TimeoutError: {exc}"
-                    logger.warning("%s", formatted)
+                    bundle = compile_signal_bundle_from_exception(exc)
+                    logger.warning("%s", render_compile_signals(bundle))
                     compile_duration = time.monotonic() - compile_start
-                    retry_message = self._append_compile_retry_message(
+                    retry_message = self._append_compile_failure_signals(
                         conversation,
-                        formatted=formatted,
+                        bundle=bundle,
                     )
                     self.display.add_compile_result(
                         success=False,
@@ -869,12 +835,12 @@ class ArticraftAgent:
                     continue
                 except Exception as exc:
                     await self._persist_compile_failure_checkpoint_async(exc)
-                    formatted = format_compile_exception(exc)
-                    logger.warning("%s", formatted)
+                    bundle = compile_signal_bundle_from_exception(exc)
+                    logger.warning("%s", render_compile_signals(bundle))
                     compile_duration = time.monotonic() - compile_start
-                    retry_message = self._append_compile_retry_message(
+                    retry_message = self._append_compile_failure_signals(
                         conversation,
-                        formatted=formatted,
+                        bundle=bundle,
                     )
                     self.display.add_compile_result(
                         success=False,
@@ -967,16 +933,19 @@ class ArticraftAgent:
                         duration=compile_duration,
                         warnings=report.warnings,
                     )
-                    injected = self._maybe_inject_compile_warnings(conversation, report=report)
+                    injected = self._maybe_inject_compile_signals(
+                        conversation,
+                        bundle=report.signal_bundle,
+                    )
                     if not injected:
                         self._maybe_inject_post_success_design_audit(conversation)
                 except TimeoutError as exc:
-                    formatted = f"URDF compile failed: TimeoutError: {exc}"
-                    logger.warning("%s", formatted)
+                    bundle = compile_signal_bundle_from_exception(exc)
+                    logger.warning("%s", render_compile_signals(bundle))
                     compile_duration = time.monotonic() - compile_start
-                    retry_message = self._append_compile_retry_message(
+                    retry_message = self._append_compile_failure_signals(
                         conversation,
-                        formatted=formatted,
+                        bundle=bundle,
                     )
                     self.display.add_compile_result(
                         success=False,
@@ -985,12 +954,12 @@ class ArticraftAgent:
                     )
                 except Exception as exc:
                     await self._persist_compile_failure_checkpoint_async(exc)
-                    formatted = format_compile_exception(exc)
-                    logger.warning("%s", formatted)
+                    bundle = compile_signal_bundle_from_exception(exc)
+                    logger.warning("%s", render_compile_signals(bundle))
                     compile_duration = time.monotonic() - compile_start
-                    retry_message = self._append_compile_retry_message(
+                    retry_message = self._append_compile_failure_signals(
                         conversation,
-                        formatted=formatted,
+                        bundle=bundle,
                     )
                     self.display.add_compile_result(
                         success=False,

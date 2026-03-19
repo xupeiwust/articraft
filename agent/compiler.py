@@ -16,7 +16,8 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-from agent.models import CompileReport
+from agent.feedback import build_compile_signal_bundle
+from agent.models import CompileReport, CompileSignalBundle
 from agent.prompts import normalize_sdk_package
 
 logger = logging.getLogger(__name__)
@@ -84,11 +85,16 @@ def _attach_partial_compile_result(
     *,
     urdf_xml: str | None,
     warnings: list[str],
+    signal_bundle: CompileSignalBundle,
 ) -> BaseException:
     wrapped = RuntimeError(f"{type(exc).__name__}: {exc}")
     if isinstance(urdf_xml, str) and urdf_xml.strip():
         setattr(wrapped, "partial_urdf_xml", urdf_xml)
     setattr(wrapped, "warnings", list(warnings))
+    test_report = getattr(exc, "test_report", None)
+    if test_report is not None:
+        setattr(wrapped, "test_report", test_report)
+    setattr(wrapped, "compile_signal_bundle", signal_bundle)
     return wrapped
 
 
@@ -139,20 +145,32 @@ def compile_urdf_report(script_path: Path, *, sdk_package: str = "sdk") -> Compi
         )
     except Exception as exc:
         urdf_xml = _extract_urdf_xml(globals_dict, sdk_package=sdk_package)
+        signal_bundle = build_compile_signal_bundle(
+            status="failure",
+            warnings=warnings,
+            test_report=getattr(exc, "test_report", None),
+            exc=exc,
+        )
         wrapped = _attach_partial_compile_result(
             exc,
             urdf_xml=urdf_xml,
             warnings=warnings,
+            signal_bundle=signal_bundle,
         )
         raise wrapped from exc
 
     urdf_xml = _extract_urdf_xml(globals_dict, sdk_package=sdk_package)
     if not isinstance(urdf_xml, str):
         raise ValueError("object_model must compile into an exportable XML payload")
+    signal_bundle = build_compile_signal_bundle(
+        status="success",
+        warnings=warnings,
+        test_report=test_report,
+    )
     return CompileReport(
         urdf_xml=urdf_xml,
         warnings=warnings,
-        test_report=test_report,
+        signal_bundle=signal_bundle,
     )
 
 
@@ -342,6 +360,7 @@ def _compile_worker(script_path_str: str, sdk_package: str, conn: object) -> Non
             "ok": True,
             "urdf_xml": report.urdf_xml,
             "warnings": report.warnings,
+            "signal_bundle": report.signal_bundle.to_dict(),
         }
         conn.send(payload)  # type: ignore[attr-defined]
     except BaseException as exc:
@@ -356,6 +375,9 @@ def _compile_worker(script_path_str: str, sdk_package: str, conn: object) -> Non
         warnings = getattr(exc, "warnings", None)
         if isinstance(warnings, list):
             payload["warnings"] = [str(w) for w in warnings]
+        signal_bundle = getattr(exc, "compile_signal_bundle", None)
+        if isinstance(signal_bundle, CompileSignalBundle):
+            payload["signal_bundle"] = signal_bundle.to_dict()
         conn.send(payload)  # type: ignore[attr-defined]
     finally:
         try:
@@ -428,13 +450,19 @@ def compile_urdf_report_maybe_timeout(
     if msg.get("ok") is True:
         urdf_xml = msg.get("urdf_xml")
         warnings = msg.get("warnings")
+        signal_bundle_payload = msg.get("signal_bundle")
         if not isinstance(urdf_xml, str):
             raise RuntimeError("URDF compile failed: missing urdf_xml from worker")
         if not isinstance(warnings, list):
             warnings = []
+        if isinstance(signal_bundle_payload, dict):
+            signal_bundle = CompileSignalBundle.from_dict(signal_bundle_payload)
+        else:
+            signal_bundle = build_compile_signal_bundle(status="success", warnings=warnings)
         return CompileReport(
             urdf_xml=urdf_xml,
             warnings=[str(w) for w in warnings],
+            signal_bundle=signal_bundle,
         )
 
     error_text = str(msg.get("error", "Unknown compile worker error")).strip()
@@ -448,6 +476,13 @@ def compile_urdf_report_maybe_timeout(
     warnings = msg.get("warnings")
     if isinstance(warnings, list):
         setattr(exc, "warnings", [str(w) for w in warnings])
+    signal_bundle_payload = msg.get("signal_bundle")
+    if isinstance(signal_bundle_payload, dict):
+        setattr(
+            exc,
+            "compile_signal_bundle",
+            CompileSignalBundle.from_dict(signal_bundle_payload),
+        )
     raise exc
 
 
@@ -1099,7 +1134,9 @@ def _run_required_tests(
             lines.append(f"- {name}: {details}")
         if len(list(failures)) > 10:
             lines.append(f"... ({len(list(failures)) - 10} more)")
-        raise ValueError("\n".join(lines))
+        exc = ValueError("\n".join(lines))
+        setattr(exc, "test_report", report)
+        raise exc
 
     return report
 
