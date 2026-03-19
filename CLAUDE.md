@@ -9,6 +9,7 @@ Articraft is an agentic system that generates articulated 3D objects (URDF model
 ## Common Commands
 
 Use `uv` for direct Python commands and `just` for the agent-facing shortcuts that help with record iteration. Run `just` or check [`justfile`](/Users/matthewzhou/articraft/justfile) for the full recipe list.
+When a recipe supports optional settings, pass them as `just` overrides before the recipe name, for example `just model=gemini-3-flash-preview image=reference.png wb "prompt text"`.
 
 ```bash
 uv sync --group dev            # Install Python dependencies
@@ -25,6 +26,8 @@ just search-index              # Rebuild the workbench search index
 just viewer                    # Start viewer
 just viewer-dev                # Start viewer in dev mode
 just wb "prompt text"          # Generate an object from a prompt
+just image=reference.png wb-init "prompt text"   # Draft a record with a stored reference image
+just model=gemini-3-flash-preview image=reference.png wb "prompt text"  # Override defaults
 ```
 
 ### Running a single test

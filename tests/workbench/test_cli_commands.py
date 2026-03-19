@@ -68,6 +68,55 @@ def test_workbench_rerun_record_command(
     assert "search_index=" in captured
 
 
+def test_workbench_rerun_record_command_accepts_legacy_sdk_docs_mode(
+    fake_agent: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo_root = tmp_path
+    exit_code = asyncio.run(
+        runner.run_from_input(
+            "make a coffee machine",
+            prompt_text="make a coffee machine",
+            display_prompt="make a coffee machine",
+            repo_root=repo_root,
+            image_path=None,
+            provider="openai",
+            thinking_level="high",
+            max_turns=30,
+            system_prompt_path="designer_system_prompt.txt",
+            sdk_package="sdk",
+            sdk_docs_mode="full",
+            label="coffee rerun",
+            tags=["coffee"],
+        )
+    )
+    assert exit_code == 0
+    capsys.readouterr()
+
+    record_dir = next((repo_root / "data" / "records").iterdir())
+    provenance_path = record_dir / "provenance.json"
+    provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+    provenance["prompting"]["sdk_docs_mode"] = "legacy_import"
+    provenance_path.write_text(json.dumps(provenance, indent=2) + "\n", encoding="utf-8")
+
+    assert (
+        workbench_main(
+            [
+                "--repo-root",
+                str(repo_root),
+                "rerun-record",
+                str(record_dir),
+            ]
+        )
+        == 0
+    )
+
+    captured = capsys.readouterr().out
+    assert f"reran record_id={record_dir.name}" in captured
+    assert "search_index=" in captured
+
+
 def test_workbench_init_record_command(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -134,3 +183,37 @@ def test_workbench_init_record_command(
     captured = capsys.readouterr().out
     assert f"initialized record_id={record_dir.name}" in captured
     assert "search_index=" in captured
+
+
+def test_workbench_init_record_command_persists_input_image(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo_root = tmp_path
+    image_path = repo_root / "reference.png"
+    image_path.write_bytes(b"\x89PNG\r\n\x1a\n")
+
+    assert (
+        workbench_main(
+            [
+                "--repo-root",
+                str(repo_root),
+                "init-record",
+                "build a folding reading lamp",
+                "--provider",
+                "openai",
+                "--image",
+                str(image_path),
+            ]
+        )
+        == 0
+    )
+
+    records = sorted((repo_root / "data" / "records").iterdir())
+    assert len(records) == 1
+    record_dir = records[0]
+
+    assert (record_dir / "inputs" / image_path.name).read_bytes() == image_path.read_bytes()
+
+    captured = capsys.readouterr().out
+    assert f"initialized record_id={record_dir.name}" in captured

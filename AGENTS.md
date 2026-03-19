@@ -5,6 +5,7 @@
 
 ## Build, Test, and Development Commands
 Use `uv` for direct Python workflows, and `just` for the agent-facing shortcuts that speed up common iteration loops. For additional shortcuts, run `just` or check [`justfile`](/Users/matthewzhou/articraft/justfile).
+When a `just` recipe supports optional settings, pass them as overrides before the recipe name, for example `just model=gemini-3-flash-preview image=reference.png wb "prompt text"`.
 
 - `uv sync --group dev` installs the project and development dependencies.
 - `uv build` creates the wheel and source distribution in `dist/`.
@@ -15,6 +16,7 @@ Use `uv` for direct Python workflows, and `just` for the agent-facing shortcuts 
 - `just setup` handles first-time repo setup and storage initialization.
 - `just smoke-tests` runs the smoke-test suite.
 - `just wb-init "prompt text"` creates a draft workbench record without running generation, which is useful when you want an empty record directory to work in.
+- `just image=reference.png wb-init "prompt text"` stores a reference image with the draft so later reruns keep the same conditioning.
 - `just compile data/records/<id>` recompiles a record's `model.py` into `model.urdf`.
 - `just rerun data/records/<id>` reruns generation for an existing workbench record in place.
 - `just search-index` rebuilds the workbench search index after record changes.

@@ -426,6 +426,7 @@ def create_workbench_draft_record(
     *,
     repo_root: Path,
     prompt_text: str,
+    image_path: Path | None = None,
     provider: str = "openai",
     model_id: str | None = None,
     openai_transport: str = "http",
@@ -476,6 +477,8 @@ def create_workbench_draft_record(
     record_store.ensure_record_dirs(context.record_id)
     storage_repo.write_text(context.record_prompt_path, normalized_prompt)
     storage_repo.write_text(context.record_model_path, _DRAFT_MODEL_TEMPLATE)
+    if image_path is not None:
+        record_store.copy_input_image(context.record_id, image_path)
 
     compile_report = StorageCompileReport(
         schema_version=1,

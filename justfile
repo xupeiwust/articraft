@@ -3,6 +3,15 @@ default:
 
 host := "127.0.0.1"
 port := "8765"
+model := "gpt-5.4"
+thinking := "high"
+sdk := "sdk"
+image := ""
+dataset_id := ""
+mode := "prod"
+api_host := host
+api_port := port
+sdk_package := "sdk"
 
 setup:
     # Create a local env template once; never overwrite an existing secrets file.
@@ -37,36 +46,13 @@ lint:
 smoke-tests:
     uv run --group dev pytest -q
 
-wb prompt model_arg="model=gpt-5.4" thinking_arg="thinking=high" sdk_arg="sdk=sdk":
+wb prompt:
     #!/usr/bin/env bash
     set -euo pipefail
-    raw_model={{ quote(model_arg) }}
-    raw_thinking={{ quote(thinking_arg) }}
-    raw_sdk={{ quote(sdk_arg) }}
-    case "$raw_model" in
-      model=*)
-        model="${raw_model#model=}"
-        ;;
-      *)
-        model="$raw_model"
-        ;;
-    esac
-    case "$raw_thinking" in
-      thinking=*)
-        thinking="${raw_thinking#thinking=}"
-        ;;
-      *)
-        thinking="$raw_thinking"
-        ;;
-    esac
-    case "$raw_sdk" in
-      sdk=*)
-        sdk="${raw_sdk#sdk=}"
-        ;;
-      *)
-        sdk="$raw_sdk"
-        ;;
-    esac
+    model={{ quote(model) }}
+    thinking={{ quote(thinking) }}
+    sdk={{ quote(sdk) }}
+    image={{ quote(image) }}
     case "$sdk" in
       sdk|base)
         sdk_package="sdk"
@@ -91,44 +77,27 @@ wb prompt model_arg="model=gpt-5.4" thinking_arg="thinking=high" sdk_arg="sdk=sd
         exit 1
         ;;
     esac
-    exec uv run python agent/runner.py \
-      --repo-root . \
-      --prompt {{ quote(prompt) }} \
-      --provider "$provider" \
-      --model "$model" \
-      --thinking "$thinking" \
+    cmd=(
+      uv run python agent/runner.py
+      --repo-root .
+      --prompt {{ quote(prompt) }}
+      --provider "$provider"
+      --model "$model"
+      --thinking "$thinking"
       --sdk-package "$sdk_package"
+    )
+    if [ -n "$image" ]; then
+      cmd+=(--image "$image")
+    fi
+    exec "${cmd[@]}"
 
-wb-init prompt model_arg="model=gpt-5.4" thinking_arg="thinking=high" sdk_arg="sdk=sdk":
+wb-init prompt:
     #!/usr/bin/env bash
     set -euo pipefail
-    raw_model={{ quote(model_arg) }}
-    raw_thinking={{ quote(thinking_arg) }}
-    raw_sdk={{ quote(sdk_arg) }}
-    case "$raw_model" in
-      model=*)
-        model="${raw_model#model=}"
-        ;;
-      *)
-        model="$raw_model"
-        ;;
-    esac
-    case "$raw_thinking" in
-      thinking=*)
-        thinking="${raw_thinking#thinking=}"
-        ;;
-      *)
-        thinking="$raw_thinking"
-        ;;
-    esac
-    case "$raw_sdk" in
-      sdk=*)
-        sdk="${raw_sdk#sdk=}"
-        ;;
-      *)
-        sdk="$raw_sdk"
-        ;;
-    esac
+    model={{ quote(model) }}
+    thinking={{ quote(thinking) }}
+    sdk={{ quote(sdk) }}
+    image={{ quote(image) }}
     case "$sdk" in
       sdk|base)
         sdk_package="sdk"
@@ -153,14 +122,20 @@ wb-init prompt model_arg="model=gpt-5.4" thinking_arg="thinking=high" sdk_arg="s
         exit 1
         ;;
     esac
-    exec uv run articraft-workbench \
-      --repo-root . \
-      init-record \
-      {{ quote(prompt) }} \
-      --provider "$provider" \
-      --model-id "$model" \
-      --thinking-level "$thinking" \
+    cmd=(
+      uv run articraft-workbench
+      --repo-root .
+      init-record
+      {{ quote(prompt) }}
+      --provider "$provider"
+      --model-id "$model"
+      --thinking-level "$thinking"
       --sdk-package "$sdk_package"
+    )
+    if [ -n "$image" ]; then
+      cmd+=(--image "$image")
+    fi
+    exec "${cmd[@]}"
 
 dataset-validate:
     uv run articraft-dataset --repo-root . validate
@@ -226,7 +201,7 @@ dataset-delete-record record_path:
       --execute \
       --confirm-record-id "$confirm_record_id"
 
-dataset-promote record_ref category_title dataset_id="":
+dataset-promote record_ref category_title:
     #!/usr/bin/env bash
     set -euo pipefail
     record_ref={{ quote(record_ref) }}
@@ -248,7 +223,7 @@ search-index:
 rerun record:
     uv run articraft-workbench --repo-root . rerun-record {{ quote(record) }}
 
-viewer mode="prod" api_host=host api_port=port:
+viewer:
     #!/usr/bin/env bash
     set -euo pipefail
     if ! command -v npm >/dev/null 2>&1; then
@@ -296,14 +271,14 @@ viewer mode="prod" api_host=host api_port=port:
         ;;
     esac
 
-viewer-dev api_host=host api_port=port:
-    exec just viewer dev {{api_host}} {{api_port}}
+viewer-dev:
+    exec just mode=dev api_host={{ quote(api_host) }} api_port={{ quote(api_port) }} viewer
 
 viewer-api:
     uv run articraft-workbench --repo-root . rebuild-search-index
-    exec uv run uvicorn viewer.api.app:app --reload --host {{host}} --port {{port}}
+    exec uv run uvicorn viewer.api.app:app --reload --host {{api_host}} --port {{api_port}}
 
-compile record_dir sdk_package="sdk":
+compile record_dir:
     #!/usr/bin/env bash
     set -euo pipefail
     record_dir={{ quote(record_dir) }}

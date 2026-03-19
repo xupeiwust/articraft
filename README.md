@@ -63,11 +63,19 @@ just wb "Create a realistic articulated desk lamp with a weighted base, two hing
 
 This saves a generated record into the local workbench.
 
-If you do not pass a model or thinking level, `just wb` defaults to:
+Optional `just` overrides go before the recipe name:
+
+```bash
+just model=gemini-3-flash-preview wb "Create a compact tabletop fan with an oscillating head and tilt adjustment."
+just image=reference.png wb "Create a weighted desk lamp with articulated arms."
+```
+
+If you do not pass overrides, `just wb` defaults to:
 
 ```bash
 model=gpt-5.4
 thinking=high
+sdk=sdk
 ```
 
 ## 5. Try Another Model
@@ -75,9 +83,9 @@ thinking=high
 Examples:
 
 ```bash
-just wb "Create a folding office chair with rolling casters and a reclining backrest." model=gpt-5.4
-just wb "Create a compact tabletop fan with an oscillating head and tilt adjustment." model=gemini-3-flash-preview
-just wb "Create a tower crane with a rotating top and suspended hook." model=gpt-5.4 thinking=high
+just model=gpt-5.4 wb "Create a folding office chair with rolling casters and a reclining backrest."
+just model=gemini-3-flash-preview wb "Create a compact tabletop fan with an oscillating head and tilt adjustment."
+just model=gpt-5.4 thinking=high image=reference.png wb "Create a tower crane with a rotating top and suspended hook."
 ```
 
 ## 6. Open the Viewer
@@ -102,6 +110,7 @@ For live frontend development:
 
 ```bash
 just viewer-dev
+just api_host=0.0.0.0 api_port=9000 viewer-dev
 ```
 
 ## 7. A Few Useful Commands
@@ -122,6 +131,7 @@ Recompile a saved record:
 
 ```bash
 just compile data/records/<record-id>
+just sdk_package=sdk_hybrid compile data/records/<record-id>
 ```
 
 Precompile all saved records that are still missing generated artifacts:

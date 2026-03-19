@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from agent.runner import create_workbench_draft_record, rerun_record_in_place
+from agent.tools import resolve_image_path
 from cli.common import add_data_root_argument
 from storage.collections import CollectionStore
 from storage.models import WorkbenchCollection
@@ -50,6 +51,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Create an empty draft workbench record from a prompt without running generation.",
     )
     init_record.add_argument("prompt", help="Prompt text to store with the draft record.")
+    init_record.add_argument(
+        "--image",
+        default=None,
+        help="Optional reference image to store with the draft record.",
+    )
     init_record.add_argument(
         "--provider",
         default="openai",
@@ -157,9 +163,15 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "init-record":
         try:
+            image_path = resolve_image_path(args.image, provider=args.provider)
+        except Exception as exc:
+            print(f"Failed to load image: {exc}")
+            return 1
+        try:
             record_dir = create_workbench_draft_record(
                 repo_root=args.repo_root,
                 prompt_text=args.prompt,
+                image_path=image_path,
                 provider=args.provider,
                 model_id=args.model_id,
                 openai_transport=args.openai_transport,
