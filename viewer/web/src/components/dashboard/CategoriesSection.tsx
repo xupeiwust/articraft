@@ -123,6 +123,9 @@ export function CategoriesSection({ categoryStats }: CategoriesSectionProps): JS
             <Table className="text-[11px]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-8 w-8 px-0 py-[5px] text-center text-[10px] uppercase tracking-[0.06em] text-[var(--text-quaternary)]">
+                    #
+                  </TableHead>
                   <TableHead className="h-8 px-4 py-[5px] text-[10px] uppercase tracking-[0.06em] text-[var(--text-quaternary)]">
                     <button
                       type="button"
@@ -166,11 +169,14 @@ export function CategoriesSection({ categoryStats }: CategoriesSectionProps): JS
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(([category, stats]) => (
+                {filtered.map(([category, stats], index) => (
                   <TableRow
                     key={category}
                     className="border-b border-[var(--border-subtle)] hover:bg-[var(--surface-1)]"
                   >
+                    <TableCell className="w-8 px-0 py-[5px] text-center font-mono tabular-nums text-[var(--text-quaternary)]">
+                      {index + 1}
+                    </TableCell>
                     <TableCell className="w-full px-4 py-[5px] text-[var(--text-secondary)]">
                       {formatCategoryLabel(category)}
                     </TableCell>
