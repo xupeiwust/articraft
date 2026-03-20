@@ -6,13 +6,13 @@ Generate articulated 3D objects from prompts and inspect them locally.
 
 You need:
 
-- Python 3.11 or 3.12
+- Python 3.12 recommended (`.python-version` is committed for `uv`), or Python 3.11
 - [`uv`](https://docs.astral.sh/uv/)
 - [`just`](https://github.com/casey/just)
 - [`npm`](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) if you want the viewer and frontend hooks ready locally
 
 Important:
-`cadquery` depends on `vtk`, and the currently supported wheels for this repo do not install on CPython 3.13. If `uv sync --group dev` fails with a `vtk` platform or ABI error, switch to Python 3.11 or 3.12 and rerun setup.
+`cadquery` depends on `vtk`, and the currently supported wheels for this repo do not install on CPython 3.13. The repo pins Python 3.12 for `uv` via `.python-version`. If you are not using `uv`'s pinned interpreter behavior, use Python 3.11 or 3.12 and avoid 3.13+.
 
 If you do not have `just` yet:
 

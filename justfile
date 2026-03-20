@@ -20,7 +20,7 @@ name := ""
 
 setup:
     # Create a local env template once; never overwrite an existing secrets file.
-    python3 scripts/bootstrap_env.py .
+    uv run python scripts/bootstrap_env.py .
     uv sync --group dev
     uv run pre-commit install --hook-type pre-commit --hook-type pre-push
     @if command -v npm >/dev/null 2>&1; then \
