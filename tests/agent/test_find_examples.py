@@ -24,8 +24,7 @@ def test_parse_example_document_reads_frontmatter() -> None:
 def test_search_example_documents_prefers_structured_matches() -> None:
     matches = search_example_documents("fillet", sdk_package="sdk_hybrid", limit=3)
 
-    assert matches
-    assert matches[0].title == "Rounding Corners with Fillet"
+    assert [doc.title for doc in matches] == ["Rounding Corners with Fillet"]
 
 
 def test_search_example_documents_returns_full_content() -> None:
@@ -70,7 +69,8 @@ def test_search_example_documents_keeps_specific_body_api_queries() -> None:
     matches = search_example_documents("cboreHole", sdk_package="sdk_hybrid", limit=10)
 
     assert matches
-    assert "Making Counter-bored and Counter-sunk Holes" in [doc.title for doc in matches]
+    assert matches[0].title == "Making Counter-bored and Counter-sunk Holes"
+    assert "A Parametric Bearing Pillow Block" in [doc.title for doc in matches]
 
 
 def test_hybrid_example_corpus_titles_are_unique() -> None:

@@ -125,6 +125,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
+    { name = "bm25s" },
     { name = "cadquery" },
     { name = "coacd" },
     { name = "fastapi" },
@@ -154,6 +155,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles", specifier = ">=24.1.0" },
+    { name = "bm25s", specifier = ">=0.3.2.post1" },
     { name = "cadquery", specifier = ">=2.5" },
     { name = "coacd", specifier = ">=1.0.7" },
     { name = "fastapi", specifier = ">=0.111.0" },
@@ -187,6 +189,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/6b/5c/685e6633917e101e5dcb62b9dd76946cbb57c26e133bae9e0cd36033c0a9/attrs-25.4.0.tar.gz", hash = "sha256:16d5969b87f0859ef33a48b35d55ac1be6e42ae49d5e853b597db70c35c57e11", size = 934251, upload-time = "2025-10-06T13:54:44.725Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3a/2a/7cc015f5b9f5db42b7d48157e23356022889fc354a2813c15934b7cb5c0e/attrs-25.4.0-py3-none-any.whl", hash = "sha256:adcf7e2a1fb3b36ac48d97835bb6d8ade15b8dcce26aba8bf1d14847b57a3373", size = 67615, upload-time = "2025-10-06T13:54:43.17Z" },
+]
+
+[[package]]
+name = "bm25s"
+version = "0.3.2.post1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7a/29/2ac15c7cd9f204809891f5822c20b06806b985c0d24058dd54249780e300/bm25s-0.3.2.post1.tar.gz", hash = "sha256:66470f49fb9e8208e3d01d400d237ed09ecad9a03d7721f82cf520e3b2e29aee", size = 74932, upload-time = "2026-03-17T02:39:02.262Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c8/00/1b927debe9dea2c605b3f13f18ce096658b049e0b477985979d6bf6a5595/bm25s-0.3.2.post1-py3-none-any.whl", hash = "sha256:ccb4d0a85168c2b1bdc86e513ea10a7ff14b638d33a173fe5c8ba14dd5d0fb78", size = 70149, upload-time = "2026-03-17T02:39:00.881Z" },
 ]
 
 [[package]]

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from agent.examples import search_example_documents
+from agent.examples import load_example_documents, search_example_documents
 from agent.tools.base import BaseDeclarativeTool, BaseToolInvocation, ToolResult, make_tool_schema
 
 
@@ -21,8 +21,8 @@ class FindExamplesInvocation(BaseToolInvocation[FindExamplesParams, list[dict[st
 
     def get_description(self) -> str:
         return (
-            f"Search curated {self.sdk_package} examples for query={self.params.query!r} "
-            f"(limit={self.params.limit})"
+            f"Run lexical example search over curated {self.sdk_package} examples for "
+            f"query={self.params.query!r} (limit={self.params.limit})"
         )
 
     async def execute(self) -> ToolResult:
@@ -54,23 +54,38 @@ class FindExamplesInvocation(BaseToolInvocation[FindExamplesParams, list[dict[st
 class FindExamplesTool(BaseDeclarativeTool):
     def __init__(self, *, sdk_package: str) -> None:
         self.sdk_package = sdk_package
+        available_titles = [doc.title for doc in load_example_documents(sdk_package)]
+        titles_block = "Available example titles:\n" + "\n".join(
+            f"- {title}" for title in available_titles
+        )
         schema = make_tool_schema(
             name="find_examples",
             description=(
-                "Search curated example documents for the active SDK and return full markdown "
-                "matches.\n\n"
-                "Use this when you need a concrete CadQuery or hybrid authoring reference before "
-                "editing code.\n\n"
-                "Returns: a list of matches with title, description, tags, path, and full content."
+                "Run lexical search over curated example documents for the active SDK and "
+                "return sufficiently relevant full markdown matches.\n\n"
+                "Search checks file names, titles, descriptions, tags, prose, and code "
+                "identifiers. It works best with short concrete queries such as object names, "
+                "feature names, geometry operations, CadQuery API names, or exact example "
+                "titles.\n\n"
+                "This does not search SDK docs, tests, test helper APIs, or arbitrary "
+                "repository code. It is not a general API search tool.\n\n"
+                "If relevance is weak, the search may return fewer than limit results.\n\n"
+                f"{titles_block}"
             ),
             parameters={
                 "query": {
                     "type": "string",
-                    "description": "What example pattern to search for.",
+                    "description": (
+                        "Short lexical query. Prefer concrete nouns, feature names, API names, "
+                        "or example titles over long natural-language descriptions."
+                    ),
                 },
                 "limit": {
                     "type": "integer",
-                    "description": "Maximum number of full example documents to return.",
+                    "description": (
+                        "Maximum number of full example documents to return. Search may return "
+                        "fewer if relevance is weak."
+                    ),
                 },
             },
             required=["query"],

@@ -2,13 +2,17 @@
 - Use ONLY `read_code`, `edit_code`, and `find_examples`.
 - `read_code` returns the exact editable code section as a plain string.
 - `edit_code` is for surgical replacements inside the editable section.
-- `find_examples` returns curated hybrid CadQuery example documents for reference.
+- `find_examples` runs lexical search over curated hybrid CadQuery example documents and returns full relevant matches.
 - Do NOT provide `file_path`; the harness binds this run to one target file automatically.
 - Never paste Python code in chat; code changes must be in tool calls. When finished, reply with a brief message and no code.
 </tool_contract>
 
 <tool_workflow>
 - Use `find_examples` early when you need a CadQuery or hybrid authoring pattern before editing.
+- Search `find_examples` with short concrete lexical queries:
+  - object names, feature names, geometry operations, CadQuery API names, or exact example titles
+  - prefer `occ bottle`, `fillet`, `cboreHole`, `lego brick`, or `workplane face` over long natural-language descriptions
+- If a search is weak or empty, refine immediately with 2-5 sharper tokens instead of writing a longer sentence.
 - Use `read_code` when you need the exact editable section before changing it.
 - Keep edits surgical when the current representation is already correct; replace the smallest unique snippet possible.
 - After ANY `edit_code` failure, immediately call `read_code` again and copy the exact current text for `old_string` before retrying.

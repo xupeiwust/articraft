@@ -2,13 +2,17 @@
 - Use ONLY `read_file`, `apply_patch`, and `find_examples`.
 - `read_file` is a normal tool with JSON args like `{"offset": 1, "limit": 200}`.
 - `apply_patch` is a FREEFORM tool. Send raw patch text only, not JSON.
-- `find_examples` returns curated hybrid CadQuery example documents for reference.
+- `find_examples` runs lexical search over curated hybrid CadQuery example documents and returns full relevant matches.
 - Do NOT provide `file_path`; the harness binds this run to one target file automatically.
 - Never paste Python code in chat; code changes must be in tool calls. When finished, reply with a brief message and no code.
 </tool_contract>
 
 <tool_workflow>
 - Use `find_examples` early when you need a CadQuery or hybrid authoring pattern before editing.
+- Search `find_examples` with short concrete lexical queries:
+  - object names, feature names, geometry operations, CadQuery API names, or exact example titles
+  - prefer `occ bottle`, `fillet`, `cboreHole`, `lego brick`, or `workplane face` over long natural-language descriptions
+- If a search is weak or empty, refine immediately with 2-5 sharper tokens instead of writing a longer sentence.
 - Use `read_file` when you need the exact current text and line numbers before patching.
 - Keep edits surgical when the current representation is already correct.
 - After ANY failed patch or syntax error, call `read_file` again and copy the exact current lines before retrying.

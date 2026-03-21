@@ -51,6 +51,7 @@ def test_prompt_outputs_are_current() -> None:
     assert "full base SDK" not in compiled_by_name["designer_system_prompt_openai_hybrid.txt"]
     assert "section_loft(...)" in compiled_by_name["designer_system_prompt_openai_hybrid.txt"]
     assert "find_examples" in compiled_by_name["designer_system_prompt_openai_hybrid.txt"]
+    assert "lexical, not semantic" in compiled_by_name["designer_system_prompt_openai_hybrid.txt"]
     assert "edit_code" in compiled_by_name["designer_system_prompt_gemini.txt"]
     assert "read_code" in compiled_by_name["designer_system_prompt_gemini.txt"]
     assert "write_code" not in compiled_by_name["designer_system_prompt_gemini.txt"]
@@ -88,3 +89,4 @@ def test_prompt_outputs_are_current() -> None:
     assert "full base SDK" not in compiled_by_name["designer_system_prompt_gemini_hybrid.txt"]
     assert "section_loft(...)" in compiled_by_name["designer_system_prompt_gemini_hybrid.txt"]
     assert "find_examples" in compiled_by_name["designer_system_prompt_gemini_hybrid.txt"]
+    assert "lexical, not semantic" in compiled_by_name["designer_system_prompt_gemini_hybrid.txt"]

@@ -7,6 +7,7 @@
 - `section_loft(...)`, `repair_loft(...)`, and `partition_shell(...)` are unavailable in `sdk_hybrid`.
 - Not every model needs CadQuery. Prefer primitives when they are sufficient, and reach for CadQuery when you need shape freedom the base SDK does not provide cleanly.
 - When you are about to build unfamiliar CadQuery geometry, call `find_examples` first so you can adapt a concrete repository example before editing.
+- `find_examples` is lexical, not semantic. Search with short concrete terms like object names, feature names, geometry operations, and CadQuery API names.
 - Keep articulations, tests, and URDF structure explicit in `sdk_hybrid`.
 </harness_requirements>
 
