@@ -98,6 +98,21 @@ thinking=high
 sdk=sdk
 ```
 
+To change either setting, pass overrides on the same command:
+
+```bash
+# Use a different model (same SDK)
+just model=gemini-3-flash-preview wb "Create a compact desk fan with adjustable tilt."
+
+# Use the hybrid SDK (same model)
+just sdk=sdk_hybrid wb "Create a compact desk fan with adjustable tilt."
+
+# Change both model and SDK together
+just model=gpt-5.4 sdk=sdk_hybrid wb "Create a compact desk fan with adjustable tilt."
+```
+
+Use `sdk=sdk` for the standard pipeline and `sdk=sdk_hybrid` when you want the hybrid rendering path.
+
 ## 6. Run A Dataset Batch From CSV
 
 Tracked dataset batch specs live under `data/batch_specs/`. Each CSV row defines one dataset generation job, including its own model settings.
