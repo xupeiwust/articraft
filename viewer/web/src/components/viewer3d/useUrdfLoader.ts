@@ -186,10 +186,10 @@ export function useUrdfLoader(
     };
 
     refreshClipping();
-    controls.addEventListener('change', refreshClipping);
+    controls.addEventListener('end', refreshClipping);
 
     return () => {
-      controls.removeEventListener('change', refreshClipping);
+      controls.removeEventListener('end', refreshClipping);
     };
   }, [camera, controls, urdfSpec, gridGroup, axisGroup, invalidate]);
 

@@ -14,6 +14,7 @@ from agent.tools.base import (
     make_tool_schema,
 )
 from agent.tools.edit_code import EditCodeTool
+from agent.tools.find_examples import FindExamplesTool
 from agent.tools.read_code import ReadCodeTool
 from agent.tools.read_file import ReadFileTool
 from agent.tools.registry import ToolRegistry
@@ -38,10 +39,14 @@ SUPPORTED_IMAGE_MIME_TYPES_BY_PROVIDER: dict[str, set[str]] = {
 
 def build_tool_registry(provider: str, *, sdk_package: str = "sdk") -> ToolRegistry:
     provider_norm = (provider or "openai").strip().lower()
-    normalize_sdk_package(sdk_package)
+    package = normalize_sdk_package(sdk_package)
     if provider_norm == "openai":
-        return ToolRegistry([ReadFileTool(), ApplyPatchFreeformTool()])
-    return ToolRegistry([ReadCodeTool(), EditCodeTool()])
+        tools: list[BaseDeclarativeTool] = [ReadFileTool(), ApplyPatchFreeformTool()]
+    else:
+        tools = [ReadCodeTool(), EditCodeTool()]
+    if package == "sdk_hybrid":
+        tools.append(FindExamplesTool(sdk_package=package))
+    return ToolRegistry(tools)
 
 
 def provider_system_prompt_suffix(provider: str, *, sdk_package: str = "sdk") -> str:
@@ -126,6 +131,7 @@ __all__ = [
     "ApplyPatchFreeformTool",
     "ApplyPatchTool",
     "EditCodeTool",
+    "FindExamplesTool",
     "ReadCodeTool",
     "ReadFileTool",
     "WriteCodeTool",

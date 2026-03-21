@@ -461,23 +461,6 @@ class ArticraftAgent:
             "</tool_use_rules>"
         )
 
-    def _first_turn_tool_nudge_text(self) -> str:
-        if self.provider == "openai":
-            return (
-                "<first_turn_tool_nudge>\n"
-                "- Begin with a tool call.\n"
-                "- Use read_file first to inspect the file, then apply_patch for changes.\n"
-                "- Do not provide file_path.\n"
-                "</first_turn_tool_nudge>"
-            )
-        return (
-            "<first_turn_tool_nudge>\n"
-            "- Begin with a tool call.\n"
-            "- Use read_code first to inspect the editable section, then use edit_code for changes.\n"
-            '- If the editable section is empty, initialize it with edit_code using old_string="".\n'
-            "</first_turn_tool_nudge>"
-        )
-
     def _tool_call_name(self, tool_call: dict) -> str:
         if not isinstance(tool_call, dict):
             return ""
@@ -874,16 +857,6 @@ class ArticraftAgent:
                 nudge = {
                     "role": "user",
                     "content": self._code_paste_nudge_text(),
-                }
-                conversation.append(nudge)
-                if self.trace_writer:
-                    self.trace_writer.write_message(nudge)
-                continue
-
-            if turn == 1 and not tool_calls:
-                nudge = {
-                    "role": "user",
-                    "content": self._first_turn_tool_nudge_text(),
                 }
                 conversation.append(nudge)
                 if self.trace_writer:

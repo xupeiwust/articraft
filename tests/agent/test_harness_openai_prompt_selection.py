@@ -96,11 +96,24 @@ def test_openai_prompt_resolution_and_payload_preview() -> None:
 def test_openai_hybrid_payload_preview_includes_hybrid_docs() -> None:
     hybrid_docs_message = _build_openai_preview(
         sdk_package="sdk_hybrid",
-        sdk_docs_mode="core",
+        sdk_docs_mode="full",
     )["input"][0]["content"][0]["text"]
     assert "## sdk/_docs/common/00_quickstart.md" in hybrid_docs_message
     assert "## sdk/_docs/cadquery/35_cadquery.md" in hybrid_docs_message
     assert "## sdk/_docs/common/80_testing.md" in hybrid_docs_message
+    assert "## sdk/_docs/cadquery/39a_cadquery_examples.md" not in hybrid_docs_message
+
+
+def test_openai_hybrid_payload_preview_includes_find_examples_tool() -> None:
+    payload = _build_openai_preview(
+        sdk_package="sdk_hybrid",
+        sdk_docs_mode="full",
+    )
+
+    tool_names = {tool["name"] for tool in payload["tools"]}
+    assert "find_examples" in tool_names
+    assert "Use ONLY `read_file`, `apply_patch`, and `find_examples`" in payload["instructions"]
+    assert "Use `find_examples` early" in payload["instructions"]
 
 
 def test_openai_prompt_cache_key_is_stable_across_user_prompt_changes() -> None:
@@ -241,3 +254,23 @@ def test_gemini_prompt_resolution_and_payload_preview() -> None:
         "If the real object should be hollow, thin-walled, or cavity-bearing" in gemini_instructions
     )
     assert "Do not omit important internal structures" in gemini_instructions
+
+
+def test_gemini_hybrid_payload_preview_includes_find_examples_tool() -> None:
+    payload = build_provider_payload_preview(
+        "a pair of scissors",
+        provider="gemini",
+        model_id="gemini-2.5-pro",
+        thinking_level="high",
+        system_prompt_path=DESIGNER_PROMPT_NAME,
+        sdk_package="sdk_hybrid",
+    )
+
+    declarations = payload["config"]["tools"][0]["function_declarations"]
+    tool_names = {tool["name"] for tool in declarations}
+    assert "find_examples" in tool_names
+    assert (
+        "Use ONLY `read_code`, `edit_code`, and `find_examples`"
+        in payload["config"]["system_instruction"]
+    )
+    assert "Use `find_examples` early" in payload["config"]["system_instruction"]

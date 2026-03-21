@@ -32,7 +32,7 @@ PROMPT_VARIANTS: tuple[PromptVariant, ...] = (
         name="designer_openai_hybrid",
         sections=(
             SECTIONS_DIR / "designer_common.md",
-            SECTIONS_DIR / "provider_openai.md",
+            SECTIONS_DIR / "provider_openai_hybrid.md",
             SECTIONS_DIR / "feedback_rules.md",
             SECTIONS_DIR / "sdk_hybrid.md",
         ),
@@ -54,7 +54,7 @@ PROMPT_VARIANTS: tuple[PromptVariant, ...] = (
         name="designer_gemini_hybrid",
         sections=(
             SECTIONS_DIR / "designer_common.md",
-            SECTIONS_DIR / "provider_gemini.md",
+            SECTIONS_DIR / "provider_gemini_hybrid.md",
             SECTIONS_DIR / "feedback_rules.md",
             SECTIONS_DIR / "sdk_hybrid.md",
         ),

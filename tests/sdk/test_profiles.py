@@ -14,3 +14,4 @@ def test_base_docs_profile_includes_section_lofts_only() -> None:
     assert "sdk/_docs/base/46_section_lofts.md" not in hybrid_docs
     assert "sdk/_docs/base/47_shell_partition.md" not in base_docs
     assert "sdk/_docs/base/47_shell_partition.md" not in hybrid_docs
+    assert "sdk/_docs/cadquery/39a_cadquery_examples.md" not in hybrid_docs

@@ -94,6 +94,42 @@ function parseReadFileResult(raw: string): { code: string; startLine: number } |
   }
 }
 
+type FindExamplesResultMatch = {
+  title: string;
+  description: string;
+  tags: string[];
+  path: string;
+  content: string;
+};
+
+function parseFindExamplesResult(raw: string): FindExamplesResultMatch[] | null {
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const result = Array.isArray(parsed.result) ? parsed.result : null;
+    if (!result) return null;
+
+    const matches = result
+      .map((item) => asRecord(item))
+      .filter((item): item is Record<string, unknown> => item !== null)
+      .map((item) => {
+        const title = typeof item.title === "string" ? item.title : null;
+        const description = typeof item.description === "string" ? item.description : null;
+        const path = typeof item.path === "string" ? item.path : null;
+        const content = typeof item.content === "string" ? item.content : null;
+        const tags = Array.isArray(item.tags)
+          ? item.tags.filter((tag): tag is string => typeof tag === "string")
+          : [];
+        if (!title || !description || !path || !content) return null;
+        return { title, description, path, content, tags };
+      })
+      .filter((item): item is FindExamplesResultMatch => item !== null);
+
+    return matches.length > 0 ? matches : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Render inline markdown: **bold**, *italic*, `code` */
 function renderInlineMarkdown(text: string): JSX.Element {
   const parts: (string | JSX.Element)[] = [];
@@ -305,6 +341,52 @@ function AssistantEvent({ event }: { event: EnrichedTraceMessage }): JSX.Element
 
 function ToolEvent({ event }: { event: EnrichedTraceMessage }): JSX.Element {
   const raw = fullMessageText(event.content);
+
+  if (event.name === "find_examples" && raw) {
+    const matches = parseFindExamplesResult(raw);
+    if (matches) {
+      return (
+        <div className="min-w-0 space-y-2">
+          <p className="text-[11px] text-[var(--text-tertiary)]">
+            <code className="rounded bg-[var(--surface-2)] px-1 py-0.5 font-mono text-[10px] text-[var(--text-secondary)]">
+              {event.name}
+            </code>{" "}
+            result
+          </p>
+          <div className="space-y-2">
+            {matches.map((match) => (
+              <div
+                key={match.path}
+                className="space-y-2 rounded-md border border-[var(--border)] bg-[var(--surface-1)] p-3"
+              >
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-[11px] font-medium text-[var(--text-primary)]">
+                      {match.title}
+                    </p>
+                    <Badge variant="secondary">{match.path}</Badge>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
+                    {match.description}
+                  </p>
+                  {match.tags.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {match.tags.map((tag) => (
+                        <Badge key={`${match.path}-${tag}`} variant="secondary">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <PlainBlock text={match.content} maxHeight="max-h-80" />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+  }
 
   // read_file results: extract code and highlight as Python
   if (event.name === "read_file" && raw) {
