@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 _COMPILED_MODEL_CACHE_ATTR = "_sdk_generated_collision_model_cache"
-_CACHE_VERSION = 1
+_CACHE_VERSION = 2
 _AFFINE_TOL = 1e-6
 
 Vec3 = tuple[float, float, float]
@@ -452,28 +452,6 @@ def _write_cached_hull_paths(
     assets: AssetContext,
     settings: CollisionGenerationSettings,
 ) -> list[Path]:
-    try:
-        mesh = coacd.Mesh(
-            np.asarray(tm.vertices, dtype=np.float64),
-            np.asarray(tm.faces, dtype=np.int32),
-        )
-        hulls = coacd.run_coacd(
-            mesh,
-            threshold=float(settings.threshold),
-            max_convex_hull=int(settings.max_convex_hulls),
-            preprocess_resolution=int(settings.preprocess_resolution),
-            max_ch_vertex=int(settings.max_ch_vertex),
-            mcts_max_depth=int(settings.mcts_max_depth),
-            mcts_nodes=int(settings.mcts_nodes),
-            mcts_iterations=int(settings.mcts_iterations),
-            merge=bool(settings.merge),
-            seed=int(settings.seed),
-        )
-    except Exception as exc:
-        raise ValidationError(
-            f"Failed to decompose mesh for collision generation: {mesh_path} ({exc})"
-        ) from exc
-
     cache_key = _mesh_collision_cache_key(
         mesh_path=mesh_path,
         geometry=geometry,
@@ -482,19 +460,27 @@ def _write_cached_hull_paths(
     cache_dir = _collision_cache_dir(assets)
     cache_dir.mkdir(parents=True, exist_ok=True)
     hull_paths: list[Path] = []
-    for hull_index, hull in enumerate(hulls, start=1):
-        if not isinstance(hull, Iterable):
-            raise ValidationError(f"Unexpected CoACD hull payload for {mesh_path}")
-        hull_vertices, hull_faces = hull
-        hull_mesh = trimesh.Trimesh(
-            vertices=np.asarray(hull_vertices, dtype=np.float64),
-            faces=np.asarray(hull_faces, dtype=np.int64),
-            process=False,
+    components = _split_trimesh_components_for_coacd(tm)
+    for component_index, component in enumerate(components, start=1):
+        hulls = _run_coacd_on_trimesh(
+            component,
+            mesh_path=mesh_path,
+            settings=settings,
+            component_index=component_index,
         )
-        out_name = f"{cache_key}__hull_{hull_index:03d}.obj"
-        out_path = cache_dir / out_name
-        hull_mesh.export(out_path)
-        hull_paths.append(out_path)
+        for hull_index, hull in enumerate(hulls, start=1):
+            if not isinstance(hull, Iterable):
+                raise ValidationError(f"Unexpected CoACD hull payload for {mesh_path}")
+            hull_vertices, hull_faces = hull
+            hull_mesh = trimesh.Trimesh(
+                vertices=np.asarray(hull_vertices, dtype=np.float64),
+                faces=np.asarray(hull_faces, dtype=np.int64),
+                process=False,
+            )
+            out_name = f"{cache_key}__component_{component_index:03d}__hull_{hull_index:03d}.obj"
+            out_path = cache_dir / out_name
+            hull_mesh.export(out_path)
+            hull_paths.append(out_path)
 
     manifest_path = _collision_cache_manifest_path(cache_dir, cache_key)
     manifest_path.write_text(
@@ -510,6 +496,66 @@ def _write_cached_hull_paths(
         encoding="utf-8",
     )
     return hull_paths
+
+
+def _split_trimesh_components_for_coacd(tm: trimesh.Trimesh) -> list[trimesh.Trimesh]:
+    try:
+        components = tm.split(only_watertight=False)
+    except TypeError:
+        components = tm.split()
+    except Exception:
+        components = [tm]
+
+    normalized: list[trimesh.Trimesh] = []
+    for component in components:
+        if not isinstance(component, trimesh.Trimesh):
+            continue
+        if component.vertices.size == 0 or component.faces.size == 0:
+            continue
+        normalized.append(component.copy())
+
+    if not normalized:
+        return [tm.copy()]
+    if len(normalized) == 1:
+        return normalized
+    return sorted(normalized, key=_trimesh_component_sort_key)
+
+
+def _trimesh_component_sort_key(component: trimesh.Trimesh) -> tuple[object, ...]:
+    bounds = np.asarray(component.bounds, dtype=np.float64).reshape(-1)
+    rounded_bounds = tuple(round(float(value), 9) for value in bounds.tolist())
+    return (-int(len(component.faces)), -int(len(component.vertices)), rounded_bounds)
+
+
+def _run_coacd_on_trimesh(
+    tm: trimesh.Trimesh,
+    *,
+    mesh_path: Path,
+    settings: CollisionGenerationSettings,
+    component_index: int,
+) -> object:
+    try:
+        mesh = coacd.Mesh(
+            np.asarray(tm.vertices, dtype=np.float64),
+            np.asarray(tm.faces, dtype=np.int32),
+        )
+        return coacd.run_coacd(
+            mesh,
+            threshold=float(settings.threshold),
+            max_convex_hull=int(settings.max_convex_hulls),
+            preprocess_resolution=int(settings.preprocess_resolution),
+            max_ch_vertex=int(settings.max_ch_vertex),
+            mcts_max_depth=int(settings.mcts_max_depth),
+            mcts_nodes=int(settings.mcts_nodes),
+            mcts_iterations=int(settings.mcts_iterations),
+            merge=bool(settings.merge),
+            seed=int(settings.seed),
+        )
+    except Exception as exc:
+        raise ValidationError(
+            "Failed to decompose mesh component for collision generation: "
+            f"{mesh_path} (component {component_index}: {exc})"
+        ) from exc
 
 
 def _load_cached_hull_paths(

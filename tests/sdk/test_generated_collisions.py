@@ -190,3 +190,44 @@ def test_compile_generated_collisions_resolves_legacy_mesh_prefix(tmp_path) -> N
     collisions = compiled.parts[0].collisions
     assert len(collisions) == 1
     assert collisions[0].geometry == Box((0.10, 0.20, 0.30))
+
+
+def test_generated_collisions_runs_coacd_per_disconnected_component(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assets = AssetContext(tmp_path)
+    mesh_path = assets.mesh_path("disconnected.obj")
+    mesh_path.parent.mkdir(parents=True, exist_ok=True)
+    mesh_path.write_text(
+        "\n".join(
+            [
+                "v 0 0 0",
+                "v 1 0 0",
+                "v 0 1 0",
+                "v 5 0 0",
+                "v 6 0 0",
+                "v 5 1 0",
+                "f 1 2 3",
+                "f 4 5 6",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    calls: list[int] = []
+
+    def fake_run_coacd_on_trimesh(tm, *, mesh_path, settings, component_index):
+        calls.append(component_index)
+        return [(tm.vertices.copy(), tm.faces.copy())]
+
+    monkeypatch.setattr(gc, "_run_coacd_on_trimesh", fake_run_coacd_on_trimesh)
+
+    compiled = gc.compile_object_model_with_generated_collisions(
+        _build_model_with_mesh(tmp_path, Mesh(filename="assets/meshes/disconnected.obj")),
+        asset_root=tmp_path,
+    )
+
+    assert calls == [1, 2]
+    assert len(compiled.parts[0].collisions) == 2

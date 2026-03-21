@@ -79,6 +79,81 @@ def _coerce_shape(model: object, cq: Any) -> object:
     )
 
 
+def _coerce_shape_list(model: object, cq: Any) -> list[object]:
+    if isinstance(model, cq.Assembly):
+        return _assembly_component_shapes(model, cq)
+
+    if isinstance(model, cq.Workplane):
+        try:
+            values = list(model.vals())
+        except Exception as exc:
+            raise TypeError("CadQuery Workplane did not produce an exportable shape") from exc
+        if not values:
+            raise TypeError("CadQuery Workplane produced no exportable shape")
+        if not all(isinstance(value, cq.Shape) for value in values):
+            raise TypeError("CadQuery Workplane produced non-shape objects")
+        shapes: list[object] = []
+        for value in values:
+            shapes.extend(_split_shape_components(value))
+        return shapes
+
+    if isinstance(model, cq.Shape):
+        return _split_shape_components(model)
+
+    raise TypeError(
+        "Unsupported CadQuery model type. Expected cadquery.Shape, "
+        "cadquery.Workplane, or cadquery.Assembly."
+    )
+
+
+def _split_shape_components(shape: object) -> list[object]:
+    solids_getter = getattr(shape, "Solids", None)
+    if callable(solids_getter):
+        try:
+            solids = [solid for solid in solids_getter() if solid is not None]
+        except Exception:
+            solids = []
+        if len(solids) > 1:
+            return list(solids)
+        if len(solids) == 1:
+            return [solids[0]]
+    return [shape]
+
+
+def _apply_shape_location(shape: object, location: object) -> object:
+    for method_name in ("located", "locate"):
+        method = getattr(shape, method_name, None)
+        if not callable(method):
+            continue
+        try:
+            return method(location)
+        except Exception:
+            continue
+    raise TypeError("CadQuery shape could not be located for component export")
+
+
+def _assembly_component_shapes(
+    assembly: object, cq: Any, *, parent_location: object | None = None
+) -> list[object]:
+    base_location = parent_location if parent_location is not None else cq.Location()
+    assembly_location = getattr(assembly, "loc", None)
+    if assembly_location is None:
+        current_location = base_location
+    else:
+        current_location = base_location * assembly_location
+
+    shapes: list[object] = []
+    obj = getattr(assembly, "obj", None)
+    if obj is not None:
+        for shape in _coerce_shape_list(obj, cq):
+            shapes.append(_apply_shape_location(shape, current_location))
+
+    children = getattr(assembly, "children", ())
+    for child in children:
+        shapes.extend(_assembly_component_shapes(child, cq, parent_location=current_location))
+    return shapes
+
+
 def _tessellate_cadquery_shape(
     shape: object,
     *,
@@ -163,6 +238,24 @@ def _resolve_export_path(
         return asset_ctx.mesh_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def _component_export_paths(
+    filename: str | os.PathLike[str],
+    *,
+    component_count: int,
+    assets: AssetContextLike | None,
+) -> list[Path]:
+    path = _resolve_export_path(filename, assets=assets)
+    if component_count <= 1:
+        return [path]
+
+    suffix = path.suffix or ".obj"
+    stem = path.stem if path.suffix else path.name
+    return [
+        path.parent / f"{stem}__component_{index:03d}{suffix}"
+        for index in range(1, component_count + 1)
+    ]
 
 
 def _cache_root_for_export(
@@ -447,6 +540,37 @@ def save_cadquery_obj(
     return export.mesh_path
 
 
+def export_cadquery_components(
+    model: object,
+    filename: str | os.PathLike[str],
+    *,
+    assets: AssetContextLike | None = None,
+    tolerance: float = 0.001,
+    angular_tolerance: float = 0.1,
+    unit_scale: float = 1.0,
+) -> list[CadQueryMeshExport]:
+    cq = _require_cadquery()
+    shapes = _coerce_shape_list(model, cq)
+    if not shapes:
+        raise TypeError("CadQuery model produced no exportable component shapes")
+    export_paths = _component_export_paths(
+        filename,
+        component_count=len(shapes),
+        assets=assets,
+    )
+    return [
+        export_cadquery_mesh(
+            shape,
+            export_path,
+            assets=None,
+            tolerance=tolerance,
+            angular_tolerance=angular_tolerance,
+            unit_scale=unit_scale,
+        )
+        for shape, export_path in zip(shapes, export_paths, strict=True)
+    ]
+
+
 def mesh_from_cadquery(
     model: object,
     filename: str | os.PathLike[str],
@@ -465,3 +589,25 @@ def mesh_from_cadquery(
         unit_scale=unit_scale,
     )
     return export.mesh
+
+
+def mesh_components_from_cadquery(
+    model: object,
+    filename: str | os.PathLike[str],
+    *,
+    assets: AssetContextLike | None = None,
+    tolerance: float = 0.001,
+    angular_tolerance: float = 0.1,
+    unit_scale: float = 1.0,
+) -> list[Mesh]:
+    return [
+        export.mesh
+        for export in export_cadquery_components(
+            model,
+            filename,
+            assets=assets,
+            tolerance=tolerance,
+            angular_tolerance=angular_tolerance,
+            unit_scale=unit_scale,
+        )
+    ]
