@@ -236,6 +236,8 @@ class BatchRunDisplay:
         self.run_turns[slug] = turn
         active = len(self.runs)
         queued = max(0, self.total_runs - self.completed - active)
+        started_at = self.runs.get(slug)
+        elapsed = (time.time() - started_at) if started_at is not None else None
 
         line = Text()
         line.append("  turn    ", style="bold blue")
@@ -243,6 +245,12 @@ class BatchRunDisplay:
         line.append(truncate_text(slug, 50), style="bold")
         line.append("  t=", style="dim")
         line.append(f"{turn}", style="bold yellow")
+        if elapsed is not None:
+            line.append("  age=", style="dim")
+            line.append(format_duration(elapsed), style="bold blue")
+        if cost > 0:
+            line.append("  spent=", style="dim")
+            line.append(format_cost(cost), style="green")
         line.append("  batch ", style="dim")
         line.append("ok=", style="dim")
         line.append(f"{self.successes}", style="bold green")

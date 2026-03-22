@@ -10,8 +10,10 @@ def format_cost(cost: float) -> str:
     Returns:
         Formatted string like "$0.0234"
     """
-    if cost < 0.0001:
+    if cost <= 0:
         return "$0.0000"
+    if cost < 0.0001:
+        return "<$0.0001"
     elif cost < 0.01:
         return f"${cost:.6f}"
     elif cost < 1.0:
@@ -32,9 +34,9 @@ def format_tokens(tokens: int) -> str:
     if tokens < 1000:
         return str(tokens)
     elif tokens < 1_000_000:
-        return f"{tokens/1000:.1f}K"
+        return f"{tokens / 1000:.1f}K"
     else:
-        return f"{tokens/1_000_000:.1f}M"
+        return f"{tokens / 1_000_000:.1f}M"
 
 
 def format_duration(seconds: float) -> str:
@@ -47,7 +49,7 @@ def format_duration(seconds: float) -> str:
         Formatted string like "2m 15s" or "1h 5m"
     """
     if seconds < 1:
-        return f"{seconds*1000:.0f}ms"
+        return f"{seconds * 1000:.0f}ms"
     elif seconds < 60:
         return f"{seconds:.1f}s"
 
@@ -91,7 +93,7 @@ def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
     """
     if len(text) <= max_length:
         return text
-    return text[:max_length - len(suffix)] + suffix
+    return text[: max_length - len(suffix)] + suffix
 
 
 def format_tool_args(args, max_items: int = 3) -> list[str]:
@@ -107,6 +109,7 @@ def format_tool_args(args, max_items: int = 3) -> list[str]:
     if isinstance(args, str):
         try:
             import json
+
             args = json.loads(args)
         except (json.JSONDecodeError, TypeError):
             return [truncate_text(args, 60)] if args else []

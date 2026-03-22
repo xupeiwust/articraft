@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import hashlib
+import json
 import logging
 import os
 import shutil
@@ -731,6 +732,22 @@ async def _remove_staging_dir(path: Path) -> None:
     await asyncio.to_thread(shutil.rmtree, path)
 
 
+def _read_total_cost(run_dir: Path | None) -> float:
+    if run_dir is None:
+        return 0.0
+    cost_path = run_dir / "cost.json"
+    if not cost_path.exists():
+        return 0.0
+    try:
+        payload = json.loads(cost_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return 0.0
+    total = payload.get("total") if isinstance(payload, dict) else None
+    costs_usd = total.get("costs_usd") if isinstance(total, dict) else None
+    amount = costs_usd.get("total") if isinstance(costs_usd, dict) else None
+    return float(amount) if isinstance(amount, (int, float)) else 0.0
+
+
 @dataclass(slots=True, frozen=True)
 class BatchRowOutcome:
     row_id: str
@@ -739,6 +756,7 @@ class BatchRowOutcome:
     turn_count: int | None
     tool_call_count: int | None
     compile_attempt_count: int | None
+    total_cost: float
     record_dir: Path | None
     staging_dir: Path
     model_id: str
@@ -795,6 +813,7 @@ def _load_persisted_batch_row_outcome(
         compile_attempt_count=compile_attempt_count
         if isinstance(compile_attempt_count, int)
         else None,
+        total_cost=_read_total_cost(repo.layout.record_dir(allocation.record_id)),
         record_dir=repo.layout.record_dir(allocation.record_id),
         staging_dir=repo.layout.run_staging_dir(run_id) / allocation.record_id,
         model_id=str(record.get("model_id") or row.model_id),
@@ -891,6 +910,9 @@ async def _run_batch_row(
         turn_count=outcome.turn_count,
         tool_call_count=outcome.tool_call_count,
         compile_attempt_count=outcome.compile_attempt_count,
+        total_cost=_read_total_cost(
+            outcome.record_dir or outcome.staging_dir or context.staging_dir
+        ),
         record_dir=outcome.record_dir,
         staging_dir=outcome.staging_dir or context.staging_dir,
         model_id=outcome.model_id or row.model_id,
@@ -1036,7 +1058,7 @@ async def run_dataset_batch(config: BatchRunConfig) -> dict[str, Any]:
         display.complete_run(
             slug=allocation.record_id,
             success=True,
-            cost=0.0,
+            cost=outcome.total_cost,
             error=None,
         )
 
@@ -1135,7 +1157,7 @@ async def run_dataset_batch(config: BatchRunConfig) -> dict[str, Any]:
         display.complete_run(
             slug=allocation.record_id,
             success=outcome.success,
-            cost=0.0,
+            cost=outcome.total_cost,
             error=None if outcome.success else outcome.message,
         )
 

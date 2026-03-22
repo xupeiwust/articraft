@@ -108,6 +108,20 @@ def _prompt_cache_retention_from_env(*, model_id: str) -> Optional[str]:
     return value
 
 
+def _log_compile_signals(bundle: CompileSignalBundle) -> None:
+    failures = sum(1 for signal in bundle.signals if signal.severity == "failure")
+    warnings = sum(1 for signal in bundle.signals if signal.severity == "warning")
+    notes = sum(1 for signal in bundle.signals if signal.severity == "note")
+    summary = " ".join(str(bundle.summary or "").split())
+    logger.warning(
+        "Compile signals: %s (failures=%s warnings=%s notes=%s)",
+        summary,
+        failures,
+        warnings,
+        notes,
+    )
+
+
 def build_openai_prompt_cache_settings(
     *,
     model_id: str,
@@ -894,7 +908,7 @@ class ArticraftAgent:
                         continue
                 except TimeoutError as exc:
                     bundle = compile_signal_bundle_from_exception(exc)
-                    logger.warning("%s", render_compile_signals(bundle))
+                    _log_compile_signals(bundle)
                     compile_duration = time.monotonic() - compile_start
                     retry_message = self._append_compile_failure_signals(
                         conversation,
@@ -909,7 +923,7 @@ class ArticraftAgent:
                 except Exception as exc:
                     await self._persist_compile_failure_checkpoint_async(exc)
                     bundle = compile_signal_bundle_from_exception(exc)
-                    logger.warning("%s", render_compile_signals(bundle))
+                    _log_compile_signals(bundle)
                     compile_duration = time.monotonic() - compile_start
                     retry_message = self._append_compile_failure_signals(
                         conversation,
@@ -1016,7 +1030,7 @@ class ArticraftAgent:
                         self._maybe_inject_post_success_design_audit(conversation)
                 except TimeoutError as exc:
                     bundle = compile_signal_bundle_from_exception(exc)
-                    logger.warning("%s", render_compile_signals(bundle))
+                    _log_compile_signals(bundle)
                     compile_duration = time.monotonic() - compile_start
                     retry_message = self._append_compile_failure_signals(
                         conversation,
@@ -1030,7 +1044,7 @@ class ArticraftAgent:
                 except Exception as exc:
                     await self._persist_compile_failure_checkpoint_async(exc)
                     bundle = compile_signal_bundle_from_exception(exc)
-                    logger.warning("%s", render_compile_signals(bundle))
+                    _log_compile_signals(bundle)
                     compile_duration = time.monotonic() - compile_start
                     retry_message = self._append_compile_failure_signals(
                         conversation,
