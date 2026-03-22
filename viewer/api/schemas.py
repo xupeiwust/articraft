@@ -183,6 +183,7 @@ class ViewerBootstrapResponse(BaseModel):
 
 class CategoryStatsResponse(BaseModel):
     count: int
+    sdk_package: str | None = None
     average_rating: float | None = None
     average_cost_usd: float | None = None
 

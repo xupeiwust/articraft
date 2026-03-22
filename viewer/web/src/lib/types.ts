@@ -154,6 +154,7 @@ export type RepoStats = {
     string,
     {
       count: number;
+      sdk_package: string | null;
       average_rating: number | null;
       average_cost_usd: number | null;
     }

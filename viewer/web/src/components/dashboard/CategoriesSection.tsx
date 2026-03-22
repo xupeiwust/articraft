@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 
 import { formatCost } from "@/lib/dashboard-stats";
 import { formatCategoryLabel } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -17,17 +18,24 @@ type CategoriesSectionProps = {
     string,
     {
       count: number;
+      sdk_package: string | null;
       average_rating: number | null;
       average_cost_usd: number | null;
     }
   >;
 };
 
-type SortKey = "category" | "count" | "average_rating" | "average_cost_usd";
+type SortKey = "category" | "sdk_package" | "count" | "average_rating" | "average_cost_usd";
 type SortDirection = "asc" | "desc";
 
 function formatAverageRating(value: number | null): string {
   return value != null ? `${value.toFixed(1)}★` : "—";
+}
+
+function formatSdkPackage(value: string | null): string {
+  if (value === "sdk_hybrid") return "sdk_hybrid";
+  if (value === "sdk") return "sdk";
+  return "—";
 }
 
 export function CategoriesSection({ categoryStats }: CategoriesSectionProps): JSX.Element | null {
@@ -47,6 +55,14 @@ export function CategoriesSection({ categoryStats }: CategoriesSectionProps): JS
 
         if (sortKey === "category") {
           return sortDirection === "asc" ? categoryFallback : -categoryFallback;
+        }
+
+        if (sortKey === "sdk_package") {
+          const leftValue = formatSdkPackage(leftStats.sdk_package);
+          const rightValue = formatSdkPackage(rightStats.sdk_package);
+          const sdkDelta = leftValue.localeCompare(rightValue);
+          if (sdkDelta === 0) return categoryFallback;
+          return sortDirection === "asc" ? sdkDelta : -sdkDelta;
         }
 
         const leftValue = leftStats[sortKey];
@@ -76,7 +92,7 @@ export function CategoriesSection({ categoryStats }: CategoriesSectionProps): JS
       return;
     }
     setSortKey(nextSortKey);
-    setSortDirection(nextSortKey === "category" ? "asc" : "desc");
+    setSortDirection(nextSortKey === "category" || nextSortKey === "sdk_package" ? "asc" : "desc");
   }
 
   function SortIndicator({ column }: { column: SortKey }): JSX.Element {
@@ -136,6 +152,16 @@ export function CategoriesSection({ categoryStats }: CategoriesSectionProps): JS
                       <SortIndicator column="category" />
                     </button>
                   </TableHead>
+                  <TableHead className="h-8 whitespace-nowrap px-4 py-[5px] text-[10px] uppercase tracking-[0.06em] text-[var(--text-quaternary)]">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("sdk_package")}
+                      className="flex items-center gap-1 text-left"
+                    >
+                      <span>SDK</span>
+                      <SortIndicator column="sdk_package" />
+                    </button>
+                  </TableHead>
                   <TableHead className="h-8 whitespace-nowrap px-4 py-[5px] text-right text-[10px] uppercase tracking-[0.06em] text-[var(--text-quaternary)]">
                     <button
                       type="button"
@@ -179,6 +205,15 @@ export function CategoriesSection({ categoryStats }: CategoriesSectionProps): JS
                     </TableCell>
                     <TableCell className="w-full px-4 py-[5px] text-[var(--text-secondary)]">
                       {formatCategoryLabel(category)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-4 py-[5px] text-[var(--text-tertiary)]">
+                      {stats.sdk_package ? (
+                        <Badge variant="secondary" className="rounded-sm px-1.5 py-0 font-mono text-[10px]">
+                          {formatSdkPackage(stats.sdk_package)}
+                        </Badge>
+                      ) : (
+                        <span className="font-mono text-[var(--text-quaternary)]">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="whitespace-nowrap px-4 py-[5px] text-right font-mono tabular-nums text-[var(--text-tertiary)]">
                       {stats.count}

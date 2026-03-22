@@ -1098,9 +1098,26 @@ class ViewerStore:
 
         data_size = self._compute_data_size()
         sorted_category_counts = sorted(category_counts.items(), key=lambda x: (-x[1], x[0]))
+        category_sdk_packages: dict[str, str | None] = {}
+        for category, _count in sorted_category_counts:
+            category_payload = self.repo.read_json(
+                self.repo.layout.category_metadata_path(category)
+            )
+            target_sdk_version = (
+                str(category_payload.get("target_sdk_version") or "").strip()
+                if isinstance(category_payload, dict)
+                else ""
+            )
+            if target_sdk_version == "hybrid_cad":
+                category_sdk_packages[category] = "sdk_hybrid"
+            elif target_sdk_version == "base":
+                category_sdk_packages[category] = "sdk"
+            else:
+                category_sdk_packages[category] = None
         category_stats = {
             category: CategoryStatsResponse(
                 count=count,
+                sdk_package=category_sdk_packages.get(category),
                 average_rating=(
                     round(category_rating_totals[category] / category_rating_counts[category], 2)
                     if category_rating_counts.get(category)
