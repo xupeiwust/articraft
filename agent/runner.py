@@ -1443,6 +1443,7 @@ async def rerun_record_in_place(
     record_id: str,
     model_id: str | None = None,
     thinking_level: str | None = None,
+    sdk_package: str | None = None,
     display_enabled: Optional[bool] = None,
 ) -> int:
     resolved_repo_root = repo_root.resolve()
@@ -1494,7 +1495,11 @@ async def rerun_record_in_place(
         "designer_system_prompt.txt",
     )
     sdk_docs_mode = _first_string(prompting.get("sdk_docs_mode"), "full")
-    sdk_package = _first_string(sdk.get("sdk_package"), existing_record.get("sdk_package"))
+    sdk_package = normalize_sdk_package(
+        sdk_package
+        if sdk_package is not None
+        else _first_string(sdk.get("sdk_package"), existing_record.get("sdk_package"))
+    )
     model_id = _optional_string(model_id) or stored_model_id
     thinking_level = _optional_string(thinking_level) or stored_thinking_level
     provider = _infer_provider_from_model_id(model_id) or provider

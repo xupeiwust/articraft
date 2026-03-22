@@ -126,6 +126,62 @@ def test_workbench_rerun_record_command_accepts_model_and_thinking_overrides(
     assert "search_index=" in captured
 
 
+def test_workbench_rerun_record_command_accepts_sdk_override(
+    fake_agent: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo_root = tmp_path
+    exit_code = asyncio.run(
+        runner.run_from_input(
+            "make a microphone boom arm",
+            prompt_text="make a microphone boom arm",
+            display_prompt="make a microphone boom arm",
+            repo_root=repo_root,
+            image_path=None,
+            provider="openai",
+            model_id="gpt-5.4",
+            thinking_level="high",
+            max_turns=30,
+            system_prompt_path="designer_system_prompt.txt",
+            sdk_package="sdk_hybrid",
+            sdk_docs_mode="full",
+            label="boom arm rerun",
+            tags=["boom"],
+        )
+    )
+    assert exit_code == 0
+    capsys.readouterr()
+
+    record_dir = next((repo_root / "data" / "records").iterdir())
+
+    assert (
+        workbench_main(
+            [
+                "--repo-root",
+                str(repo_root),
+                "rerun-record",
+                str(record_dir),
+                "--sdk-package",
+                "sdk",
+            ]
+        )
+        == 0
+    )
+
+    updated_record = json.loads((record_dir / "record.json").read_text(encoding="utf-8"))
+    updated_provenance = json.loads((record_dir / "provenance.json").read_text(encoding="utf-8"))
+    assert updated_record["sdk_package"] == "sdk"
+    assert updated_provenance["sdk"]["sdk_package"] == "sdk"
+    assert (
+        updated_provenance["prompting"]["system_prompt_file"] == "designer_system_prompt_openai.txt"
+    )
+
+    captured = capsys.readouterr().out
+    assert f"reran record_id={record_dir.name}" in captured
+    assert "search_index=" in captured
+
+
 def test_workbench_rerun_record_command_accepts_legacy_sdk_docs_mode(
     fake_agent: None,
     tmp_path: Path,

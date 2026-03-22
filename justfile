@@ -12,6 +12,7 @@ mode := "prod"
 api_host := host
 api_port := port
 sdk_package := "sdk"
+sdk_override := ""
 viewer_target := "/"
 spec := ""
 concurrency := "auto"
@@ -262,6 +263,7 @@ rerun record:
     record={{ quote(record) }}
     model_override={{ quote(model) }}
     thinking_override={{ quote(thinking) }}
+    sdk_override={{ quote(sdk_override) }}
     cmd=(
       uv run articraft-workbench
       --repo-root .
@@ -273,6 +275,9 @@ rerun record:
     fi
     if [ -n "$thinking_override" ]; then
       cmd+=(--thinking-level "$thinking_override")
+    fi
+    if [ -n "$sdk_override" ]; then
+      cmd+=(--sdk-package "$sdk_override")
     fi
     exec "${cmd[@]}"
 

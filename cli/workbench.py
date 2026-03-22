@@ -5,6 +5,7 @@ import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 
+from agent.prompts import normalize_sdk_package
 from agent.runner import create_workbench_draft_record, rerun_record_in_place
 from agent.tools import resolve_image_path
 from cli.common import add_data_root_argument
@@ -139,6 +140,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional thinking level override for this rerun.",
     )
+    rerun.add_argument(
+        "--sdk-package",
+        default=None,
+        help="Optional SDK package override for this rerun.",
+    )
     subparsers.add_parser("status", help="Show workbench storage status.")
     return parser
 
@@ -224,6 +230,9 @@ def main(argv: list[str] | None = None) -> int:
         repo.ensure_layout()
         try:
             record_id = _resolve_record_reference(repo, args.record)
+            sdk_package = (
+                normalize_sdk_package(args.sdk_package) if args.sdk_package is not None else None
+            )
         except ValueError as exc:
             print(str(exc))
             return 1
@@ -234,6 +243,7 @@ def main(argv: list[str] | None = None) -> int:
                 record_id=record_id,
                 model_id=args.model_id,
                 thinking_level=args.thinking_level,
+                sdk_package=sdk_package,
             )
         )
         if exit_code != 0:
