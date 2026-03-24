@@ -107,6 +107,14 @@ from sdk import (
 
 ```python
 LatheGeometry(profile, segments=32, closed=True)
+LatheGeometry.from_shell_profiles(
+    outer_profile,
+    inner_profile,
+    segments=32,
+    start_cap="flat",
+    end_cap="flat",
+    lip_samples=6,
+)
 ```
 
 - `profile` is an iterable of `(r, z)` points.
@@ -116,39 +124,70 @@ LatheGeometry(profile, segments=32, closed=True)
 - Profiles that touch the axis are welded into shared apex/axis vertices so the
   resulting mesh is suitable for solid booleans.
 - Pass `closed=False` for the legacy open surface-of-revolution behavior.
+- `LatheGeometry.from_shell_profiles(...)` is the recommended helper for
+  thin-walled revolved parts where you want explicit control over how the shell
+  closes at the start and end of the profile.
 
 Open-front hollow shade example:
 
 ```python
 from sdk import LatheGeometry
 
-shade = LatheGeometry(
+shade = LatheGeometry.from_shell_profiles(
     [
-        (0.0, -0.030),   # rear centerline
-        (0.018, -0.030), # outer rear wall
+        (0.018, -0.030),
         (0.023, -0.022),
         (0.027, -0.010),
         (0.031, 0.010),
         (0.036, 0.027),
-        (0.039, 0.040),  # front rim outer edge
-        (0.033, 0.0385), # front rim inner edge
-        (0.027, 0.018),
-        (0.022, -0.002),
-        (0.018, -0.015),
+        (0.039, 0.040),
+    ],
+    [
+        (0.0, -0.025),
+        (0.014, -0.025),
         (0.014, -0.021),
-        (0.014, -0.025), # inner rear wall
-        (0.0, -0.025),   # back to centerline only at the rear
+        (0.018, -0.015),
+        (0.022, -0.002),
+        (0.027, 0.018),
+        (0.033, 0.0385),
     ],
     segments=44,
+    start_cap="flat",
+    end_cap="flat",
 )
 ```
 
 - This pattern creates a thin-walled cone-like shade with an open front and a
   hollow interior.
-- For shade-like forms, prefer one closed wall loop like this over
+- `flat` caps connect the outer and inner shell profiles with a straight cut in
+  the `(r, z)` profile plane.
+
+Rounded intake lip example:
+
+```python
+intake = LatheGeometry.from_shell_profiles(
+    [
+        (0.42, -0.30),
+        (0.55, -0.12),
+        (0.62, 0.00),
+    ],
+    [
+        (0.30, -0.24),
+        (0.40, -0.10),
+        (0.48, 0.00),
+    ],
+    segments=72,
+    end_cap="round",
+    lip_samples=10,
+)
+```
+
+- `round` caps insert a smooth Bezier lip between the outer and inner shell
+  endpoints, which is useful for nacelles, ducts, and other intake-like forms.
+- For shell-like forms, prefer `from_shell_profiles(...)` over
   `boolean_difference(outer, inner)` when both revolved profiles would otherwise
-  run to the axis at the open end, because that produces a capped nose instead
-  of an aperture.
+  run to the axis at an opening, because that produces a capped nose instead of
+  an aperture.
 
 ### `LoftGeometry`
 

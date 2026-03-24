@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass, field
 from math import acos, asin, atan2, cos, isfinite, pi, sin, sqrt, tan
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Iterable, List, Literal, Optional, Sequence, Tuple, Union
 
 import manifold3d as _m3d
 import numpy as np
@@ -16,6 +16,7 @@ Vec2 = Tuple[float, float]
 Vec3 = Tuple[float, float, float]
 Face = Tuple[int, int, int]
 Mat4 = Tuple[Tuple[float, float, float, float], ...]
+LatheCapMode = Literal["flat", "round"]
 _EPS = 1e-9
 _OBJ_COORD_DECIMALS = 6
 _OBJ_QUANT_STEP = 10.0 ** (-_OBJ_COORD_DECIMALS)
@@ -985,6 +986,91 @@ def _polyline_points_2d(profile: Iterable[Tuple[float, float]]) -> List[Vec2]:
     return cleaned
 
 
+def _lathe_cap_connector(
+    start: Vec2,
+    end: Vec2,
+    *,
+    start_tangent: Vec2,
+    end_tangent: Vec2,
+    mode: LatheCapMode,
+    samples: int,
+) -> List[Vec2]:
+    if _points_match_2d(start, end):
+        return [start]
+    if mode == "flat":
+        return [start, end]
+    if mode != "round":
+        raise ValueError("Lathe cap mode must be 'flat' or 'round'")
+
+    chord_dx = end[0] - start[0]
+    chord_dz = end[1] - start[1]
+    chord = sqrt(chord_dx * chord_dx + chord_dz * chord_dz)
+    if chord <= _EPS:
+        return [start]
+
+    start_len = sqrt(start_tangent[0] * start_tangent[0] + start_tangent[1] * start_tangent[1])
+    end_len = sqrt(end_tangent[0] * end_tangent[0] + end_tangent[1] * end_tangent[1])
+    if start_len <= _EPS or end_len <= _EPS:
+        return [start, end]
+
+    handle = min(chord * 0.75, start_len * 0.5, end_len * 0.5)
+    if handle <= _EPS:
+        return [start, end]
+
+    p1 = (
+        start[0] + start_tangent[0] * (handle / start_len),
+        start[1] + start_tangent[1] * (handle / start_len),
+    )
+    p2 = (
+        end[0] - end_tangent[0] * (handle / end_len),
+        end[1] - end_tangent[1] * (handle / end_len),
+    )
+    return sample_cubic_bezier_spline_2d(
+        [start, p1, p2, end],
+        samples_per_segment=max(3, int(samples)),
+    )
+
+
+def _lathe_shell_profile(
+    outer_profile: Iterable[Tuple[float, float]],
+    inner_profile: Iterable[Tuple[float, float]],
+    *,
+    start_cap: LatheCapMode,
+    end_cap: LatheCapMode,
+    lip_samples: int,
+) -> List[Vec2]:
+    outer = _polyline_points_2d(outer_profile)
+    inner = _polyline_points_2d(inner_profile)
+
+    same_alignment = _tuple_distance(outer[0], inner[0]) + _tuple_distance(outer[-1], inner[-1])
+    flipped_alignment = _tuple_distance(outer[0], inner[-1]) + _tuple_distance(outer[-1], inner[0])
+    if flipped_alignment < same_alignment:
+        inner = list(reversed(inner))
+
+    end_connector = _lathe_cap_connector(
+        outer[-1],
+        inner[-1],
+        start_tangent=(outer[-1][0] - outer[-2][0], outer[-1][1] - outer[-2][1]),
+        end_tangent=(inner[-2][0] - inner[-1][0], inner[-2][1] - inner[-1][1]),
+        mode=end_cap,
+        samples=lip_samples,
+    )
+    start_connector = _lathe_cap_connector(
+        inner[0],
+        outer[0],
+        start_tangent=(inner[0][0] - inner[1][0], inner[0][1] - inner[1][1]),
+        end_tangent=(outer[1][0] - outer[0][0], outer[1][1] - outer[0][1]),
+        mode=start_cap,
+        samples=lip_samples,
+    )
+
+    profile = list(outer)
+    profile.extend(end_connector[1:])
+    profile.extend(reversed(inner[:-1]))
+    profile.extend(start_connector[1:])
+    return profile
+
+
 def _profile_points_3d(profile: Iterable[Tuple[float, float, float]]) -> List[Vec3]:
     points = [(float(x), float(y), float(z)) for (x, y, z) in profile]
     cleaned: List[Vec3] = []
@@ -1754,6 +1840,26 @@ class TorusGeometry(MeshGeometry):
 
 
 class LatheGeometry(MeshGeometry):
+    @classmethod
+    def from_shell_profiles(
+        cls,
+        outer_profile: Iterable[Tuple[float, float]],
+        inner_profile: Iterable[Tuple[float, float]],
+        *,
+        segments: int = 32,
+        start_cap: LatheCapMode = "flat",
+        end_cap: LatheCapMode = "flat",
+        lip_samples: int = 6,
+    ) -> "LatheGeometry":
+        profile = _lathe_shell_profile(
+            outer_profile,
+            inner_profile,
+            start_cap=start_cap,
+            end_cap=end_cap,
+            lip_samples=lip_samples,
+        )
+        return cls(profile, segments=segments, closed=True)
+
     def __init__(
         self,
         profile: Iterable[Tuple[float, float]],

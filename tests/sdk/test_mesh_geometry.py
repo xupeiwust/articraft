@@ -150,6 +150,73 @@ def test_lathe_geometry_closed_false_preserves_open_surface_mode() -> None:
         mesh_module._manifold_from_geometry(geom, name="open_lathe")
 
 
+def test_lathe_geometry_from_shell_profiles_supports_flat_lips() -> None:
+    geom = sdk.LatheGeometry.from_shell_profiles(
+        [
+            (0.02, -0.10),
+            (0.05, -0.08),
+            (0.09, 0.04),
+        ],
+        [
+            (0.00, -0.09),
+            (0.03, -0.07),
+            (0.07, 0.04),
+        ],
+        segments=24,
+        start_cap="flat",
+        end_cap="flat",
+    )
+
+    mesh_module._manifold_from_geometry(geom, name="flat_shell")
+
+    mins, maxs = _bounds(geom)
+    assert mins[0] <= -0.089
+    assert maxs[0] >= 0.089
+    assert mins[2] == pytest.approx(-0.10, abs=1e-6)
+    assert maxs[2] == pytest.approx(0.04, abs=1e-6)
+
+
+def test_lathe_geometry_from_shell_profiles_supports_rounded_lips() -> None:
+    flat = sdk.LatheGeometry.from_shell_profiles(
+        [
+            (0.03, -0.14),
+            (0.07, -0.10),
+            (0.11, 0.00),
+        ],
+        [
+            (0.00, -0.12),
+            (0.04, -0.08),
+            (0.08, 0.00),
+        ],
+        segments=28,
+        end_cap="flat",
+    )
+    rounded = sdk.LatheGeometry.from_shell_profiles(
+        [
+            (0.03, -0.14),
+            (0.07, -0.10),
+            (0.11, 0.00),
+        ],
+        [
+            (0.00, -0.12),
+            (0.04, -0.08),
+            (0.08, 0.00),
+        ],
+        segments=28,
+        end_cap="round",
+        lip_samples=8,
+    )
+
+    mesh_module._manifold_from_geometry(rounded, name="rounded_shell")
+
+    assert len(rounded.vertices) > len(flat.vertices)
+    assert len(rounded.faces) > len(flat.faces)
+
+    flat_max_z = max(z for (_x, _y, z) in flat.vertices)
+    rounded_max_z = max(z for (_x, _y, z) in rounded.vertices)
+    assert rounded_max_z > flat_max_z
+
+
 def test_mesh_from_geometry_preserves_general_rotation_transform(tmp_path) -> None:
     mesh = sdk.mesh_from_geometry(
         sdk.BoxGeometry((0.20, 0.10, 0.06)).rotate((0.0, 0.0, 1.0), pi / 2.0),
