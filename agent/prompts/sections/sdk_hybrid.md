@@ -3,6 +3,10 @@
 - Import from `sdk_hybrid`, not `sdk`, and keep articulations, tests, and URDF structure explicit.
 - Prioritize believable silhouette, prompt-named visible features, and correct articulation over conservative QC cleanup.
 - Identify the dominant silhouette and primary hero features early, then spend geometry budget where those features read clearly.
+- Establish the proportion hierarchy before adding detail: identify the dominant envelope, the largest opening or face, the thickest and thinnest visible sections, and any recessed or nested visible layers.
+- When the object implies a dominant opening, intake, cavity, bowl, screen, window, or wheel arch, let that opening occupy the necessary share of the body envelope instead of undersizing it to make the rest easier.
+- Treat shell thickness, lip thickness, taper, and visible gap spacing as first-class modeling decisions, not cleanup values.
+- If the real object reads as layered or nested, model that hierarchy explicitly so outer shells, recessed shells, cavities, and inner cores have clear visual separation.
 - Bias toward more geometric richness in visible hero regions when that is what realism requires. For prompt-critical visible structure, complexity is a feature, not a bug.
 - Make prompt-named visible features present and legible; do not let placeholder geometry flatten or hide them.
 - Use realistic materials and restrained real-world colors when the prompt does not specify them.
@@ -11,6 +15,7 @@
 - Do not default silhouette-critical shells, ducts, nacelles, blades, petals, housings, or fairings to plain boxes/cylinders when the real object would read as a shaped shell or aero surface.
 - If visible internal structure, hollowness, or cavity-bearing geometry is inherent to the object, model it explicitly even when the prompt does not specify it.
 - For inlets, exhausts, vents, ducts, and similar openings, model the aperture and cavity explicitly. Do not cap a visible opening with a solid placeholder primitive.
+- When a region seems too tall, too skinny, too shallow, too covered, or too small, interpret that as a silhouette/proportion problem first, not a detail problem.
 - `section_loft(...)`, `repair_loft(...)`, and `partition_shell(...)` are unavailable in `sdk_hybrid`.
 - For unfamiliar hybrid or CadQuery geometry, use `find_examples` before inventing a pattern from scratch.
 - Preserve correct joint axes, origins, limits, and overall articulation behavior.
@@ -23,6 +28,8 @@
 - Broad `warn_if_*` checks are sensors, not proof. Use prompt-specific exact visual checks as the main regression tests.
 - Prefer object-first tests: resolve `Part`, `Articulation`, and named `Visual` objects once, then pass those exact objects into `ctx.expect_*`, `ctx.allow_*`, and `ctx.pose(...)`.
 - Prefer many small exact visual checks such as `expect_contact(...)`, `expect_gap(...)`, `expect_overlap(...)`, and `expect_within(...)` over a few vague assertions.
+- When proportion or nesting is visually central, add exact checks that prove dominance or hierarchy using gap, overlap, within, or contact relationships between the relevant visuals.
+- Prefer tests that prove aperture presence, shell setback, and nested-layer ordering over vague global coverage assumptions.
 - The model is not done until every applicable visual coverage category is proved: hero features are present, mounted parts are connected/seated, important parts are in the right place, key poses are believable, and each new visible form or mechanism has a matching assertion.
 - Test both rest pose and meaningful operating poses. For continuous joints, use explicit sampled angles rather than fake lower/upper limits.
 - For articulated models, keep `ctx.check_articulation_overlaps(...)` as the main joint-clearance gate.
