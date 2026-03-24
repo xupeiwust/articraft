@@ -1,8 +1,10 @@
-import { type JSX } from "react";
+import { type JSX, type ComponentPropsWithoutRef } from "react";
+import Markdown from "react-markdown";
 import { LightAsync as SyntaxHighlighter } from "react-syntax-highlighter";
 import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
 import python from "react-syntax-highlighter/dist/esm/languages/hljs/python";
 import { atomOneLight } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import remarkGfm from "remark-gfm";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -296,10 +298,152 @@ function PlainBlock({
   );
 }
 
+/** Strip YAML frontmatter (---...---) from markdown content. */
+function stripFrontmatter(md: string): string {
+  const match = /^---\n[\s\S]*?\n---\n?/.exec(md);
+  return match ? md.slice(match[0].length) : md;
+}
+
+/** Render markdown content with syntax-highlighted code blocks. */
+function MarkdownBlock({
+  text,
+  maxHeight = "max-h-80",
+}: {
+  text: string;
+  maxHeight?: string;
+}): JSX.Element {
+  const stripped = stripFrontmatter(text);
+  return (
+    <div
+      className={`${maxHeight} min-w-0 overflow-auto rounded-md bg-[var(--surface-2)] px-3 py-2 text-[11px] leading-relaxed text-[var(--text-secondary)]`}
+    >
+      <Markdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ children }: ComponentPropsWithoutRef<"h1">) => (
+            <h3 className="mb-1.5 mt-2 text-[12px] font-semibold text-[var(--text-primary)] first:mt-0">
+              {children}
+            </h3>
+          ),
+          h2: ({ children }: ComponentPropsWithoutRef<"h2">) => (
+            <h4 className="mb-1 mt-2 text-[11px] font-semibold text-[var(--text-primary)]">
+              {children}
+            </h4>
+          ),
+          h3: ({ children }: ComponentPropsWithoutRef<"h3">) => (
+            <h5 className="mb-1 mt-1.5 text-[11px] font-medium text-[var(--text-primary)]">
+              {children}
+            </h5>
+          ),
+          p: ({ children }: ComponentPropsWithoutRef<"p">) => (
+            <p className="my-1.5">{children}</p>
+          ),
+          ul: ({ children }: ComponentPropsWithoutRef<"ul">) => (
+            <ul className="my-1.5 list-disc space-y-0.5 pl-4">{children}</ul>
+          ),
+          ol: ({ children }: ComponentPropsWithoutRef<"ol">) => (
+            <ol className="my-1.5 list-decimal space-y-0.5 pl-4">{children}</ol>
+          ),
+          li: ({ children }: ComponentPropsWithoutRef<"li">) => (
+            <li className="text-[11px]">{children}</li>
+          ),
+          code: ({
+            className,
+            children,
+            ...rest
+          }: ComponentPropsWithoutRef<"code"> & { inline?: boolean }) => {
+            const langMatch = /language-(\w+)/.exec(className || "");
+            const codeStr = String(children).replace(/\n$/, "");
+            if (langMatch) {
+              return (
+                <div className="my-2 overflow-auto rounded bg-[var(--surface-1)]">
+                  <SyntaxHighlighter
+                    language={langMatch[1]}
+                    style={codeTheme}
+                    wrapLongLines
+                    customStyle={{
+                      margin: 0,
+                      padding: "8px 12px",
+                      background: "transparent",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "10px",
+                      lineHeight: "1.6",
+                    }}
+                    codeTagProps={{ style: { fontFamily: "var(--font-mono)" } }}
+                  >
+                    {codeStr}
+                  </SyntaxHighlighter>
+                </div>
+              );
+            }
+            return (
+              <code
+                className="rounded bg-[var(--surface-1)] px-1 py-0.5 font-mono text-[10px]"
+                {...rest}
+              >
+                {children}
+              </code>
+            );
+          },
+          pre: ({ children }: ComponentPropsWithoutRef<"pre">) => <>{children}</>,
+        }}
+      >
+        {stripped}
+      </Markdown>
+    </div>
+  );
+}
+
+/** Parse probe_model tool call arguments to extract the code snippet. */
+function parseProbeModelCode(raw: string): string | null {
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return typeof parsed.code === "string" ? parsed.code : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Parse probe_model tool result into structured fields. */
+function parseProbeModelResult(
+  raw: string,
+): { ok: boolean; elapsedMs: number; result: unknown } | null {
+  try {
+    const outer = JSON.parse(raw) as Record<string, unknown>;
+    const inner = asRecord(outer.result);
+    if (!inner) return null;
+    const ok = typeof inner.ok === "boolean" ? inner.ok : true;
+    const elapsedMs = typeof inner.elapsed_ms === "number" ? inner.elapsed_ms : 0;
+    return { ok, elapsedMs, result: inner.result ?? inner.error ?? null };
+  } catch {
+    return null;
+  }
+}
+
 function ToolCallBlock({ call }: { call: EnrichedToolCall }): JSX.Element {
   const name = toolCallName(call);
   const rawArgs = toolCallArguments(call);
   const isPatch = name === "apply_patch" || (rawArgs != null && isPatchText(rawArgs));
+
+  // probe_model: show the code snippet with Python highlighting
+  if (name === "probe_model" && rawArgs) {
+    const probeCode = parseProbeModelCode(rawArgs);
+    return (
+      <div className="min-w-0 space-y-1.5">
+        <p className="text-[11px] text-[var(--text-primary)]">
+          <code className="rounded bg-[var(--surface-2)] px-1 py-0.5 font-mono text-[10px]">
+            {name}
+          </code>
+        </p>
+        {probeCode ? (
+          <CodeBlock code={probeCode} language="python" />
+        ) : (
+          <PlainBlock text={rawArgs} />
+        )}
+      </div>
+    );
+  }
+
   const prettyArgs = !isPatch && rawArgs ? tryPrettyJson(rawArgs) : null;
 
   return (
@@ -379,10 +523,37 @@ function ToolEvent({ event }: { event: EnrichedTraceMessage }): JSX.Element {
                     </div>
                   ) : null}
                 </div>
-                <PlainBlock text={match.content} maxHeight="max-h-80" />
+                <MarkdownBlock text={match.content} maxHeight="max-h-80" />
               </div>
             ))}
           </div>
+        </div>
+      );
+    }
+  }
+
+  // probe_model results: show status badge + formatted result JSON
+  if (event.name === "probe_model" && raw) {
+    const parsed = parseProbeModelResult(raw);
+    if (parsed) {
+      const resultJson = JSON.stringify(parsed.result, null, 2);
+      return (
+        <div className="min-w-0 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[11px] text-[var(--text-tertiary)]">
+              <code className="rounded bg-[var(--surface-2)] px-1 py-0.5 font-mono text-[10px] text-[var(--text-secondary)]">
+                {event.name}
+              </code>{" "}
+              result
+            </p>
+            <Badge variant={parsed.ok ? "success" : "destructive"}>
+              {parsed.ok ? "ok" : "error"}
+            </Badge>
+            <span className="font-mono text-[10px] text-[var(--text-quaternary)]">
+              {parsed.elapsedMs.toFixed(0)}ms
+            </span>
+          </div>
+          <CodeBlock code={resultJson} maxHeight="max-h-80" />
         </div>
       );
     }
