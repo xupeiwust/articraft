@@ -35,6 +35,8 @@ def _assert_shared_contract(text: str, *, budget: int) -> None:
     assert "connected/seated" in text
     assert "important parts are in the right place" in text
     assert "each new visible form or mechanism has a matching assertion" in text
+    assert "complexity is a feature, not a bug" in text
+    assert "Do not cap a visible opening with a solid placeholder primitive." in text
     assert "Broad `warn_if_*` checks are sensors, not proof." in text
     for fragment in DISALLOWED_FRAGMENTS:
         assert fragment not in text
@@ -55,6 +57,7 @@ def test_prompt_outputs_are_current() -> None:
     assert "write_code" not in openai_text
     assert "find_examples" not in openai_text
     assert "Author visuals only; do not author collision geometry in `sdk`." in openai_text
+    assert "silhouette-critical shells, ducts, nacelles, blades, petals" in openai_text
 
     openai_hybrid_text = compiled_by_name["designer_system_prompt_openai_hybrid.txt"]
     _assert_shared_contract(openai_hybrid_text, budget=135)
@@ -68,6 +71,7 @@ def test_prompt_outputs_are_current() -> None:
         "`section_loft(...)`, `repair_loft(...)`, and `partition_shell(...)` are unavailable"
         in openai_hybrid_text
     )
+    assert "silhouette-critical shells, ducts, nacelles, blades, petals" in openai_hybrid_text
 
     gemini_text = compiled_by_name["designer_system_prompt_gemini.txt"]
     _assert_shared_contract(gemini_text, budget=120)

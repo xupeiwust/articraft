@@ -7,6 +7,7 @@ from agent.harness import ArticraftAgent
 def test_compile_failure_signal_message_has_structured_sections() -> None:
     agent = ArticraftAgent.__new__(ArticraftAgent)
     agent._last_compile_failure_sig = None
+    agent._consecutive_compile_failure_count = 0
     agent.trace_writer = None
 
     conversation: list[dict] = []
@@ -30,6 +31,7 @@ def test_compile_failure_signal_message_has_structured_sections() -> None:
 def test_repeated_compile_failure_signal_message_escalates_to_rewrite() -> None:
     agent = ArticraftAgent.__new__(ArticraftAgent)
     agent._last_compile_failure_sig = None
+    agent._consecutive_compile_failure_count = 0
     agent.trace_writer = None
 
     bundle = build_compile_signal_bundle(
@@ -43,3 +45,23 @@ def test_repeated_compile_failure_signal_message_escalates_to_rewrite() -> None:
     assert "This failure matches the previous compile attempt." in content
     assert "This failure class repeated." in content
     assert "rewrite the affected region from the root cause" in content
+
+
+def test_compile_failure_streak_escalates_even_when_signature_changes() -> None:
+    agent = ArticraftAgent.__new__(ArticraftAgent)
+    agent._last_compile_failure_sig = None
+    agent._consecutive_compile_failure_count = 0
+    agent.trace_writer = None
+
+    conversation: list[dict] = []
+    for message in ("ValueError: bad loft", "ValueError: bad overlap", "ValueError: bad spinner"):
+        content = agent._append_compile_failure_signals(
+            conversation,
+            bundle=build_compile_signal_bundle(
+                status="failure",
+                exc=RuntimeError(message),
+            ),
+        )
+
+    assert "This is compile failure 3 in a row." in content
+    assert "You are in a repair loop." in content

@@ -29,6 +29,8 @@ def test_compiled_openai_prompt_keeps_compact_contract_and_visual_test_gate() ->
         assert "connected/seated" in text
         assert "important parts are in the right place" in text
         assert "each new visible form or mechanism has a matching assertion" in text
+        assert "complexity is a feature, not a bug" in text
+        assert "Do not cap a visible opening with a solid placeholder primitive." in text
         assert "expect_aabb_" not in text
         assert "expect_joint_motion_axis(" not in text
         assert len(text.splitlines()) <= 120

@@ -301,6 +301,7 @@ class ArticraftAgent:
         self._seen_compile_signal_sigs: set[str] = set()
         self._seen_tool_error_sigs: set[str] = set()
         self._last_compile_failure_sig: Optional[str] = None
+        self._consecutive_compile_failure_count = 0
         self._post_success_design_audit_sent = False
         self.checkpoint_urdf_path = (
             Path(checkpoint_urdf_path).resolve() if checkpoint_urdf_path else None
@@ -451,7 +452,9 @@ class ArticraftAgent:
         sig = self._compile_signal_signature(bundle)
         repeated = sig == self._last_compile_failure_sig
         self._last_compile_failure_sig = sig
-        content = render_compile_signals(bundle, repeated=repeated)
+        streak = getattr(self, "_consecutive_compile_failure_count", 0) + 1
+        self._consecutive_compile_failure_count = streak
+        content = render_compile_signals(bundle, repeated=repeated, failure_streak=streak)
 
         msg = {"role": "user", "content": content}
         conversation.append(msg)
@@ -995,6 +998,7 @@ class ArticraftAgent:
                     last_compile_warnings = list(report.warnings)
                     await self._persist_compile_success_checkpoint_async(report.urdf_xml)
                     had_successful_compile = True
+                    self._consecutive_compile_failure_count = 0
                     last_successful_urdf_xml = report.urdf_xml
                     compile_duration = time.monotonic() - compile_start
                     self.display.add_compile_result(
@@ -1120,6 +1124,7 @@ class ArticraftAgent:
                     last_compile_warnings = list(report.warnings)
                     await self._persist_compile_success_checkpoint_async(report.urdf_xml)
                     had_successful_compile = True
+                    self._consecutive_compile_failure_count = 0
                     last_successful_urdf_xml = report.urdf_xml
                     self.display.add_compile_result(
                         success=True,

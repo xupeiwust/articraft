@@ -710,7 +710,12 @@ def _render_signal_lines(signals: Iterable[CompileSignal]) -> str:
     return "\n".join(rendered)
 
 
-def render_compile_signals(bundle: CompileSignalBundle, *, repeated: bool = False) -> str:
+def render_compile_signals(
+    bundle: CompileSignalBundle,
+    *,
+    repeated: bool = False,
+    failure_streak: int = 1,
+) -> str:
     failures = [signal for signal in bundle.signals if signal.severity == "failure"]
     warnings = [signal for signal in bundle.signals if signal.severity == "warning"]
     notes = [signal for signal in bundle.signals if signal.severity == "note"]
@@ -718,6 +723,8 @@ def render_compile_signals(bundle: CompileSignalBundle, *, repeated: bool = Fals
     summary = bundle.summary
     if repeated and failures:
         summary += "\nThis failure matches the previous compile attempt."
+    if failure_streak >= 3 and failures:
+        summary += f"\nThis is compile failure {failure_streak} in a row."
 
     parts = ["<compile_signals>", "<summary>", summary, "</summary>"]
     if failures:
@@ -735,6 +742,10 @@ def render_compile_signals(bundle: CompileSignalBundle, *, repeated: bool = Fals
     if repeated and failures:
         response_rules.append(
             "- This failure class repeated. Stop patching symptoms and rewrite the affected region from the root cause."
+        )
+    if failure_streak >= 3 and failures:
+        response_rules.append(
+            "- You are in a repair loop. Stop making small placement, tolerance, or box/cylinder tweaks and rewrite the failing subassembly with a more realistic representation."
         )
     parts.extend(
         [
