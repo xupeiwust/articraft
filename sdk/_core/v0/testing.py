@@ -1011,7 +1011,7 @@ class TestContext:
             )
         return self._record("check_mesh_files_exist", True)
 
-    def _check_joint_origin_near_geometry_impl(
+    def _check_articulation_origin_far_from_geometry_impl(
         self,
         *,
         tol: float,
@@ -1025,7 +1025,7 @@ class TestContext:
             return record(check_name, False, "tol must be finite and non-negative")
         r = (reason or "").strip()
         if tol_f > _JOINT_ORIGIN_TOL_DEFAULT and r:
-            self.warn(f"Relaxed joint-origin tolerance in use: tol={tol_f:.4g}. Reason: {r}")
+            self.warn(f"Relaxed articulation-origin tolerance in use: tol={tol_f:.4g}. Reason: {r}")
 
         findings = find_joint_origin_distance_findings(
             self.model,
@@ -1051,7 +1051,7 @@ class TestContext:
             )
         return record(check_name, True)
 
-    def check_joint_origin_near_geometry(
+    def fail_if_articulation_origin_far_from_geometry(
         self,
         *,
         tol: float = _JOINT_ORIGIN_TOL_DEFAULT,
@@ -1059,42 +1059,13 @@ class TestContext:
         name: Optional[str] = None,
     ) -> bool:
         tol_f = _normalize_joint_origin_tol(tol)
-        return self._check_joint_origin_near_geometry_impl(
+        return self._check_articulation_origin_far_from_geometry_impl(
             tol=tol_f,
             reason=reason,
-            check_name=name or f"check_joint_origin_near_geometry(tol={tol_f:.4g})",
+            check_name=name or f"fail_if_articulation_origin_far_from_geometry(tol={tol_f:.4g})",
         )
 
-    def check_articulation_origin_near_geometry(
-        self,
-        *,
-        tol: float = _JOINT_ORIGIN_TOL_DEFAULT,
-        reason: Optional[str] = None,
-        name: Optional[str] = None,
-    ) -> bool:
-        tol_f = _normalize_joint_origin_tol(tol)
-        return self._check_joint_origin_near_geometry_impl(
-            tol=tol_f,
-            reason=reason,
-            check_name=name or f"check_articulation_origin_near_geometry(tol={tol_f:.4g})",
-        )
-
-    def warn_if_joint_origin_near_geometry(
-        self,
-        *,
-        tol: float = _JOINT_ORIGIN_TOL_DEFAULT,
-        reason: Optional[str] = None,
-        name: Optional[str] = None,
-    ) -> bool:
-        tol_f = _normalize_joint_origin_tol(tol)
-        return self._check_joint_origin_near_geometry_impl(
-            tol=tol_f,
-            reason=reason,
-            check_name=name or f"warn_if_joint_origin_near_geometry(tol={tol_f:.4g})",
-            warn_only=True,
-        )
-
-    def warn_if_articulation_origin_near_geometry(
+    def warn_if_articulation_origin_far_from_geometry(
         self,
         *,
         tol: float = _JOINT_ORIGIN_TOL_DEFAULT,
@@ -1102,67 +1073,56 @@ class TestContext:
         name: Optional[str] = None,
     ) -> bool:
         self._warn_deprecated_default_helper(
-            "warn_if_articulation_origin_near_geometry(...)",
+            "warn_if_articulation_origin_far_from_geometry(...)",
             "Use prompt-specific exact `expect_*` checks for mount/placement realism, "
             "and investigate any finding with `probe_model` before relaxing thresholds.",
         )
         tol_f = _normalize_joint_origin_tol(tol)
-        return self._check_joint_origin_near_geometry_impl(
+        return self._check_articulation_origin_far_from_geometry_impl(
             tol=tol_f,
             reason=reason,
-            check_name=name or f"warn_if_articulation_origin_near_geometry(tol={tol_f:.4g})",
+            check_name=name or f"warn_if_articulation_origin_far_from_geometry(tol={tol_f:.4g})",
             warn_only=True,
         )
 
-    def check_part_geometry_connected(
+    def fail_if_part_contains_disconnected_geometry_islands(
         self,
         *,
         tol: float = 1e-6,
         name: Optional[str] = None,
     ) -> bool:
-        return self._check_part_geometry_connected_impl(
+        return self._check_part_contains_disconnected_geometry_islands_impl(
             tol=tol,
             check_name=name,
             warn_only=False,
         )
 
-    def warn_if_part_geometry_connected(
+    def warn_if_part_contains_disconnected_geometry_islands(
         self,
         *,
         tol: float = 1e-6,
         name: Optional[str] = None,
     ) -> bool:
-        return self._check_part_geometry_connected_impl(
+        return self._check_part_contains_disconnected_geometry_islands_impl(
             tol=tol,
             check_name=name,
             warn_only=True,
-            warn_prefix="warn_if_part_geometry_connected",
+            warn_prefix="warn_if_part_contains_disconnected_geometry_islands",
         )
 
-    def warn_if_part_geometry_disconnected(
-        self,
-        *,
-        tol: float = 1e-6,
-        name: Optional[str] = None,
-    ) -> bool:
-        return self._check_part_geometry_connected_impl(
-            tol=tol,
-            check_name=name,
-            warn_only=True,
-            warn_prefix="warn_if_part_geometry_disconnected",
-        )
-
-    def _check_part_geometry_connected_impl(
+    def _check_part_contains_disconnected_geometry_islands_impl(
         self,
         *,
         tol: float,
         check_name: Optional[str],
         warn_only: bool,
-        warn_prefix: str = "warn_if_part_geometry_connected",
+        warn_prefix: str = "warn_if_part_contains_disconnected_geometry_islands",
     ) -> bool:
         record = self._record_warning_check if warn_only else self._record
         if float(tol) < 0.0:
-            prefix = warn_prefix if warn_only else "check_part_geometry_connected"
+            prefix = (
+                warn_prefix if warn_only else "fail_if_part_contains_disconnected_geometry_islands"
+            )
             return record(
                 check_name or f"{prefix}(tol={float(tol):.4g})",
                 False,
@@ -1183,7 +1143,7 @@ class TestContext:
                 f"disconnected=[{disconnected}]"
             )
 
-        prefix = warn_prefix if warn_only else "check_part_geometry_connected"
+        prefix = warn_prefix if warn_only else "fail_if_part_contains_disconnected_geometry_islands"
         resolved_name = check_name or f"{prefix}(tol={float(tol):.4g})"
         if failures:
             preview = "\n".join(failures[:10])
@@ -1193,7 +1153,7 @@ class TestContext:
             )
         return record(resolved_name, True)
 
-    def check_no_isolated_parts(
+    def fail_if_isolated_parts(
         self,
         *,
         max_pose_samples: int = 1,
@@ -1203,7 +1163,7 @@ class TestContext:
         sample_count = int(max_pose_samples)
         if sample_count < 1:
             return self._record(
-                name or "check_no_isolated_parts(samples=0)",
+                name or "fail_if_isolated_parts(samples=0)",
                 False,
                 "max_pose_samples must be >= 1",
             )
@@ -1215,7 +1175,7 @@ class TestContext:
             return self._record(
                 name
                 or (
-                    "check_no_isolated_parts("
+                    "fail_if_isolated_parts("
                     f"samples={sample_count},contact_tol={resolved_contact_tol:.4g})"
                 ),
                 False,
@@ -1225,10 +1185,10 @@ class TestContext:
         if name is not None:
             resolved_name = name
         elif max_pose_samples == 1 and contact_tol is None:
-            resolved_name = "check_no_isolated_parts()"
+            resolved_name = "fail_if_isolated_parts()"
         else:
             resolved_name = (
-                "check_no_isolated_parts("
+                "fail_if_isolated_parts("
                 f"samples={sample_count},contact_tol={resolved_contact_tol:.4g})"
             )
 
@@ -1287,7 +1247,7 @@ class TestContext:
             f"{preview}{more}",
         )
 
-    def check_no_part_overlaps(
+    def fail_if_parts_overlap_in_current_pose(
         self,
         *,
         overlap_tol: Optional[float] = None,
@@ -1305,10 +1265,10 @@ class TestContext:
         if name is not None:
             resolved_name = name
         elif overlap_tol is None and overlap_volume_tol is None:
-            resolved_name = "check_no_part_overlaps()"
+            resolved_name = "fail_if_parts_overlap_in_current_pose()"
         else:
             resolved_name = (
-                "check_no_part_overlaps("
+                "fail_if_parts_overlap_in_current_pose("
                 f"overlap_tol={resolved_overlap_tol:.4g},"
                 f"overlap_volume_tol={resolved_overlap_volume_tol:.4g})"
             )
@@ -1366,7 +1326,7 @@ class TestContext:
             )
         return self._record(resolved_name, True)
 
-    def check_no_overlaps(
+    def fail_if_parts_overlap_in_sampled_poses(
         self,
         *,
         max_pose_samples: int = 128,
@@ -1385,7 +1345,7 @@ class TestContext:
             warn_only=False,
         )
 
-    def check_articulation_overlaps(
+    def fail_if_articulation_overlaps(
         self,
         *,
         max_pose_samples: int = 128,
@@ -1402,7 +1362,7 @@ class TestContext:
             check_name=name,
             warn_only=False,
             pair_scope=self._articulation_overlap_pair_scope(),
-            default_prefix="check_articulation_overlaps",
+            default_prefix="fail_if_articulation_overlaps",
         )
 
     def warn_if_articulation_overlaps(
@@ -1503,7 +1463,9 @@ class TestContext:
         pair_scope: Optional[Set[Tuple[str, str]]] = None,
         default_prefix: Optional[str] = None,
     ) -> bool:
-        prefix = default_prefix or ("warn_if_overlaps" if warn_only else "check_no_overlaps")
+        prefix = default_prefix or (
+            "warn_if_overlaps" if warn_only else "fail_if_parts_overlap_in_sampled_poses"
+        )
         if check_name is not None:
             resolved_name = check_name
         elif pair_scope is not None:

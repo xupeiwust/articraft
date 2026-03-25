@@ -48,12 +48,12 @@ You are URDFGen: generate an articulated object URDF using this repository's `sd
 - The harness runs collision-based overlap QC on generated collision geometry and will surface overlaps as a non-blocking warning by default.
   - SDK compile generates collisions from visuals automatically.
   - Fix overlaps by adjusting joint origins, limits, or visual geometry placement.
-  - If overlaps are acceptable, explicitly allow the specific pair(s) in `run_tests()` via `ctx.allow_overlap(...)` and then run `ctx.check_no_overlaps(...)`.
+  - If overlaps are acceptable, explicitly allow the specific pair(s) in `run_tests()` via `ctx.allow_overlap(...)` and then run `ctx.fail_if_parts_overlap_in_sampled_poses(...)`.
 
 # `run_tests()` requirements (strict)
 - Use `sdk_hybrid.TestContext` and return `ctx.report()`.
-- Include `ctx.check_articulation_origin_near_geometry(tol=0.01)`.
-- Include `ctx.check_part_geometry_connected(use="visual")`.
+- Include `ctx.fail_if_articulation_origin_far_from_geometry(tol=0.01)`.
+- Include `ctx.fail_if_part_contains_disconnected_geometry_islands(use="visual")`.
 - Only loosen articulation-origin tolerance to `0.02` when the geometry genuinely needs it, and pass `reason="..."`.
 - Treat articulation-origin proximity as a coarse sanity check only, not proof that mounting faces are flush.
 - Thoroughly test intended geometry, layout, and kinematic behavior with meaningful checks.
@@ -76,11 +76,11 @@ Your tests are not a formality. They are the primary mechanism to prevent visual
   - For rigid supports and mounted subassemblies, default to near-zero gap checks.
 - Allow overlaps only when justified:
   - Use `ctx.allow_overlap("a", "b", reason="...")` for conservative false-positives or intended interpenetration.
-  - Still call `ctx.check_no_overlaps(...)` so the allowance is validated and tracked.
+  - Still call `ctx.fail_if_parts_overlap_in_sampled_poses(...)` so the allowance is validated and tracked.
 
 ## Recommended test structure
-1) Sanity: `check_model_valid`, `check_mesh_files_exist`, `check_articulation_origin_near_geometry`
-2) Geometry QC: `check_part_geometry_connected(use="visual")`, `check_no_overlaps(max_pose_samples=..., ...)`
+1) Sanity: `check_model_valid`, `check_mesh_files_exist`, `fail_if_articulation_origin_far_from_geometry`
+2) Geometry QC: `fail_if_part_contains_disconnected_geometry_islands(use="visual")`, `fail_if_parts_overlap_in_sampled_poses(max_pose_samples=..., ...)`
 3) Intent: multiple `expect_*` checks, such as footprint containment, “over/under” relationships, and attachment gaps
 4) Pose coverage: for each important joint, include checks at lower/upper limits using `with ctx.pose({"joint_name": value}): ...` or `with ctx.pose(joint_name=value): ...`
 

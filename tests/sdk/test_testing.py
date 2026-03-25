@@ -268,104 +268,107 @@ def _build_nested_parts_model() -> ArticulatedObject:
 def test_articulation_origin_tolerance_is_truncated_to_three_decimals() -> None:
     ctx = SDKTestContext(_build_joint_origin_model(joint_z=0.115))
 
-    assert ctx.check_articulation_origin_near_geometry(tol=0.0159)
+    assert ctx.fail_if_articulation_origin_far_from_geometry(tol=0.0159)
 
     report = ctx.report()
     assert report.passed
-    assert report.checks == ("check_articulation_origin_near_geometry(tol=0.015)",)
+    assert report.checks == ("fail_if_articulation_origin_far_from_geometry(tol=0.015)",)
 
 
 def test_articulation_origin_tolerance_is_capped_at_point_one_five() -> None:
     ctx = SDKTestContext(_build_joint_origin_model(joint_z=0.25))
 
-    assert ctx.check_articulation_origin_near_geometry(tol=0.159)
+    assert ctx.fail_if_articulation_origin_far_from_geometry(tol=0.159)
 
     report = ctx.report()
     assert report.passed
-    assert report.checks == ("check_articulation_origin_near_geometry(tol=0.15)",)
+    assert report.checks == ("fail_if_articulation_origin_far_from_geometry(tol=0.15)",)
 
 
-def test_warn_if_articulation_origin_near_geometry_records_warning_only() -> None:
+def test_warn_if_articulation_origin_far_from_geometry_records_warning_only() -> None:
     ctx = SDKTestContext(_build_joint_origin_model(joint_z=0.2))
 
-    assert not ctx.warn_if_articulation_origin_near_geometry(tol=0.015)
+    assert not ctx.warn_if_articulation_origin_far_from_geometry(tol=0.015)
 
     report = ctx.report()
     assert report.passed
     assert report.failures == ()
-    assert report.checks == ("warn_if_articulation_origin_near_geometry(tol=0.015)",)
+    assert report.checks == ("warn_if_articulation_origin_far_from_geometry(tol=0.015)",)
     assert len(report.warnings) == 2
     assert report.warnings[0].startswith("DEPRECATED AS DEFAULT: ")
-    assert "warn_if_articulation_origin_near_geometry(...)" in report.warnings[0]
-    assert "warn_if_articulation_origin_near_geometry(tol=0.015)" in report.warnings[1]
+    assert "warn_if_articulation_origin_far_from_geometry(...)" in report.warnings[0]
+    assert "warn_if_articulation_origin_far_from_geometry(tol=0.015)" in report.warnings[1]
     assert "Articulation origin(s) far from geometry" in report.warnings[1]
 
 
-def test_warn_if_part_geometry_disconnected_records_warning_only() -> None:
+def test_warn_if_part_contains_disconnected_geometry_islands_records_warning_only() -> None:
     ctx = SDKTestContext(_build_disconnected_part_model())
 
-    assert not ctx.warn_if_part_geometry_disconnected()
+    assert not ctx.warn_if_part_contains_disconnected_geometry_islands()
 
     report = ctx.report()
     assert report.passed
     assert report.failures == ()
-    assert report.checks == ("warn_if_part_geometry_disconnected(tol=1e-06)",)
+    assert report.checks == ("warn_if_part_contains_disconnected_geometry_islands(tol=1e-06)",)
     assert len(report.warnings) == 1
-    assert "warn_if_part_geometry_disconnected(tol=1e-06)" in report.warnings[0]
+    assert "warn_if_part_contains_disconnected_geometry_islands(tol=1e-06)" in report.warnings[0]
     assert "Disconnected geometry islands detected" in report.warnings[0]
 
 
-def test_warn_if_part_geometry_connected_keeps_legacy_alias() -> None:
+def test_fail_if_part_contains_disconnected_geometry_islands_records_failure() -> None:
     ctx = SDKTestContext(_build_disconnected_part_model())
 
-    assert not ctx.warn_if_part_geometry_connected()
+    assert not ctx.fail_if_part_contains_disconnected_geometry_islands()
 
     report = ctx.report()
-    assert report.passed
-    assert report.failures == ()
-    assert report.checks == ("warn_if_part_geometry_connected(tol=1e-06)",)
-    assert len(report.warnings) == 1
-    assert "warn_if_part_geometry_connected(tol=1e-06)" in report.warnings[0]
-    assert "Disconnected geometry islands detected" in report.warnings[0]
+    assert not report.passed
+    assert report.checks == ("fail_if_part_contains_disconnected_geometry_islands(tol=1e-06)",)
+    assert len(report.failures) == 1
+    assert (
+        report.failures[0].name == "fail_if_part_contains_disconnected_geometry_islands(tol=1e-06)"
+    )
+    assert "Disconnected geometry islands detected" in report.failures[0].details
 
 
-def test_warn_if_part_geometry_disconnected_uses_exact_geometry_not_aabb_overlap() -> None:
+def test_warn_if_part_contains_disconnected_geometry_islands_uses_exact_geometry_not_aabb_overlap() -> (
+    None
+):
     ctx = SDKTestContext(_build_diagonally_floating_spheres_model())
 
-    assert not ctx.warn_if_part_geometry_disconnected()
+    assert not ctx.warn_if_part_contains_disconnected_geometry_islands()
 
     report = ctx.report()
     assert report.passed
     assert report.failures == ()
-    assert report.checks == ("warn_if_part_geometry_disconnected(tol=1e-06)",)
+    assert report.checks == ("warn_if_part_contains_disconnected_geometry_islands(tol=1e-06)",)
     assert len(report.warnings) == 1
     assert "connected=1/2" in report.warnings[0]
 
 
-def test_check_no_isolated_parts_fails_for_isolated_part() -> None:
+def test_fail_if_isolated_parts_fails_for_isolated_part() -> None:
     ctx = SDKTestContext(_build_isolated_part_model())
 
-    assert not ctx.check_no_isolated_parts()
+    assert not ctx.fail_if_isolated_parts()
 
     report = ctx.report()
-    assert report.checks == ("check_no_isolated_parts()",)
+    assert report.checks == ("fail_if_isolated_parts()",)
     assert len(report.failures) == 1
-    assert report.failures[0].name == "check_no_isolated_parts()"
+    assert report.failures[0].name == "fail_if_isolated_parts()"
     assert "Isolated parts detected" in report.failures[0].details
     assert "part='antenna'" in report.failures[0].details
 
 
-def test_allow_isolated_part_suppresses_check_no_isolated_parts() -> None:
+def test_allow_isolated_part_suppresses_fail_if_isolated_parts() -> None:
     model = _build_isolated_part_model()
     ctx = SDKTestContext(model)
     antenna = model.get_part("antenna")
     ctx.allow_isolated_part(antenna, reason="intentionally freestanding accent")
 
-    assert ctx.check_no_isolated_parts()
+    assert ctx.fail_if_isolated_parts()
 
     report = ctx.report()
     assert report.failures == ()
-    assert report.checks == ("check_no_isolated_parts()",)
+    assert report.checks == ("fail_if_isolated_parts()",)
     assert report.allowed_isolated_parts == ("antenna",)
     assert len(report.warnings) == 1
     assert "Isolated parts detected but allowed by justification" in report.warnings[0]
@@ -395,17 +398,20 @@ def test_warn_if_overlaps_records_warning_only() -> None:
     assert "elem_b=#0 'child_box':Box" in report.warnings[1]
 
 
-def test_check_no_part_overlaps_fails_for_rest_pose_part_overlap() -> None:
+def test_fail_if_parts_overlap_in_current_pose_fails_for_rest_pose_part_overlap() -> None:
     ctx = SDKTestContext(_build_overlapping_parts_model())
 
-    assert not ctx.check_no_part_overlaps(overlap_tol=0.001, overlap_volume_tol=0.0)
+    assert not ctx.fail_if_parts_overlap_in_current_pose(overlap_tol=0.001, overlap_volume_tol=0.0)
 
     report = ctx.report()
     assert not report.passed
-    assert report.checks == ("check_no_part_overlaps(overlap_tol=0.001,overlap_volume_tol=0)",)
+    assert report.checks == (
+        "fail_if_parts_overlap_in_current_pose(overlap_tol=0.001,overlap_volume_tol=0)",
+    )
     assert len(report.failures) == 1
     assert (
-        report.failures[0].name == "check_no_part_overlaps(overlap_tol=0.001,overlap_volume_tol=0)"
+        report.failures[0].name
+        == "fail_if_parts_overlap_in_current_pose(overlap_tol=0.001,overlap_volume_tol=0)"
     )
     assert "Part overlaps detected" in report.failures[0].details
     assert "pair=('base','child')" in report.failures[0].details
@@ -415,45 +421,49 @@ def test_check_no_part_overlaps_fails_for_rest_pose_part_overlap() -> None:
     assert "pose={}" in report.failures[0].details
 
 
-def test_check_no_part_overlaps_uses_current_pose_only() -> None:
+def test_fail_if_parts_overlap_in_current_pose_uses_current_pose_only() -> None:
     model = _build_pose_specific_part_overlap_model()
     articulation = model.get_articulation("base_to_slider")
     ctx = SDKTestContext(model)
 
-    assert ctx.check_no_part_overlaps(overlap_tol=0.001, overlap_volume_tol=0.0)
+    assert ctx.fail_if_parts_overlap_in_current_pose(overlap_tol=0.001, overlap_volume_tol=0.0)
     with ctx.pose({articulation: -0.1}):
-        assert not ctx.check_no_part_overlaps(overlap_tol=0.001, overlap_volume_tol=0.0)
+        assert not ctx.fail_if_parts_overlap_in_current_pose(
+            overlap_tol=0.001, overlap_volume_tol=0.0
+        )
 
     report = ctx.report()
     assert report.checks == (
-        "check_no_part_overlaps(overlap_tol=0.001,overlap_volume_tol=0)",
-        "check_no_part_overlaps(overlap_tol=0.001,overlap_volume_tol=0)",
+        "fail_if_parts_overlap_in_current_pose(overlap_tol=0.001,overlap_volume_tol=0)",
+        "fail_if_parts_overlap_in_current_pose(overlap_tol=0.001,overlap_volume_tol=0)",
     )
     assert len(report.failures) == 1
     assert "pair=('base','slider')" in report.failures[0].details
     assert "pose={'base_to_slider': -0.1}" in report.failures[0].details
 
 
-def test_check_no_part_overlaps_aggregates_to_one_failure_per_part_pair() -> None:
+def test_fail_if_parts_overlap_in_current_pose_aggregates_to_one_failure_per_part_pair() -> None:
     ctx = SDKTestContext(_build_multi_element_overlapping_parts_model())
 
-    assert not ctx.check_no_part_overlaps(overlap_tol=0.001, overlap_volume_tol=0.0)
+    assert not ctx.fail_if_parts_overlap_in_current_pose(overlap_tol=0.001, overlap_volume_tol=0.0)
 
     report = ctx.report()
     assert len(report.failures) == 1
     assert report.failures[0].details.count("pair=('base','child')") == 1
 
 
-def test_allow_overlap_suppresses_check_no_part_overlaps() -> None:
+def test_allow_overlap_suppresses_fail_if_parts_overlap_in_current_pose() -> None:
     ctx = SDKTestContext(_build_overlapping_parts_model())
     ctx.allow_overlap("base", "child", reason="bowl nests into the seated opening")
 
-    assert ctx.check_no_part_overlaps(overlap_tol=0.001, overlap_volume_tol=0.0)
+    assert ctx.fail_if_parts_overlap_in_current_pose(overlap_tol=0.001, overlap_volume_tol=0.0)
 
     report = ctx.report()
     assert report.passed
     assert report.failures == ()
-    assert report.checks == ("check_no_part_overlaps(overlap_tol=0.001,overlap_volume_tol=0)",)
+    assert report.checks == (
+        "fail_if_parts_overlap_in_current_pose(overlap_tol=0.001,overlap_volume_tol=0)",
+    )
     assert report.allowances == (
         "allow_overlap('base', 'child'): bowl nests into the seated opening",
     )
@@ -461,17 +471,40 @@ def test_allow_overlap_suppresses_check_no_part_overlaps() -> None:
     assert "Overlaps detected but allowed by justification" in report.warnings[0]
 
 
+def test_fail_if_parts_overlap_in_sampled_poses_records_failure() -> None:
+    ctx = SDKTestContext(_build_overlapping_parts_model())
+
+    assert not ctx.fail_if_parts_overlap_in_sampled_poses(
+        max_pose_samples=8,
+        overlap_tol=0.001,
+        overlap_volume_tol=0.0,
+    )
+
+    report = ctx.report()
+    assert not report.passed
+    assert report.checks == (
+        "fail_if_parts_overlap_in_sampled_poses(samples=8,ignore_adjacent=False,ignore_fixed=True)",
+    )
+    assert len(report.failures) == 1
+    assert (
+        report.failures[0].name
+        == "fail_if_parts_overlap_in_sampled_poses(samples=8,ignore_adjacent=False,ignore_fixed=True)"
+    )
+    assert "Overlaps detected" in report.failures[0].details
+    assert "relation=unrelated" in report.failures[0].details
+
+
 def test_deprecated_default_helper_warning_emits_once_per_helper() -> None:
     ctx = SDKTestContext(_build_joint_origin_model(joint_z=0.2))
 
-    assert not ctx.warn_if_articulation_origin_near_geometry(tol=0.015)
-    assert not ctx.warn_if_articulation_origin_near_geometry(tol=0.015)
+    assert not ctx.warn_if_articulation_origin_far_from_geometry(tol=0.015)
+    assert not ctx.warn_if_articulation_origin_far_from_geometry(tol=0.015)
 
     report = ctx.report()
     assert (
         sum(
             warning.startswith(
-                "DEPRECATED AS DEFAULT: warn_if_articulation_origin_near_geometry(...)"
+                "DEPRECATED AS DEFAULT: warn_if_articulation_origin_far_from_geometry(...)"
             )
             for warning in report.warnings
         )
@@ -479,18 +512,18 @@ def test_deprecated_default_helper_warning_emits_once_per_helper() -> None:
     )
 
 
-def test_check_articulation_overlaps_fails_for_revolute_pair() -> None:
+def test_fail_if_articulation_overlaps_fails_for_revolute_pair() -> None:
     ctx = SDKTestContext(
         _build_articulation_overlap_model(joint_type=ArticulationType.REVOLUTE),
     )
 
-    assert not ctx.check_articulation_overlaps(max_pose_samples=8)
+    assert not ctx.fail_if_articulation_overlaps(max_pose_samples=8)
 
     report = ctx.report()
     assert not report.passed
-    assert report.checks == ("check_articulation_overlaps(samples=8)",)
+    assert report.checks == ("fail_if_articulation_overlaps(samples=8)",)
     assert len(report.failures) == 1
-    assert report.failures[0].name == "check_articulation_overlaps(samples=8)"
+    assert report.failures[0].name == "fail_if_articulation_overlaps(samples=8)"
     assert "pair=('base','child')" in report.failures[0].details
 
 
@@ -510,56 +543,56 @@ def test_warn_if_articulation_overlaps_records_warning_only() -> None:
     assert "pair=('base','child')" in report.warnings[0]
 
 
-def test_check_articulation_overlaps_fails_for_prismatic_pair() -> None:
+def test_fail_if_articulation_overlaps_fails_for_prismatic_pair() -> None:
     ctx = SDKTestContext(
         _build_articulation_overlap_model(joint_type=ArticulationType.PRISMATIC),
     )
 
-    assert not ctx.check_articulation_overlaps(max_pose_samples=8)
+    assert not ctx.fail_if_articulation_overlaps(max_pose_samples=8)
 
     report = ctx.report()
     assert not report.passed
     assert len(report.failures) == 1
-    assert report.failures[0].name == "check_articulation_overlaps(samples=8)"
+    assert report.failures[0].name == "fail_if_articulation_overlaps(samples=8)"
     assert "pair=('base','child')" in report.failures[0].details
 
 
-def test_check_articulation_overlaps_fails_for_continuous_pair() -> None:
+def test_fail_if_articulation_overlaps_fails_for_continuous_pair() -> None:
     ctx = SDKTestContext(
         _build_articulation_overlap_model(joint_type=ArticulationType.CONTINUOUS),
     )
 
-    assert not ctx.check_articulation_overlaps(max_pose_samples=8)
+    assert not ctx.fail_if_articulation_overlaps(max_pose_samples=8)
 
     report = ctx.report()
     assert not report.passed
     assert len(report.failures) == 1
-    assert report.failures[0].name == "check_articulation_overlaps(samples=8)"
+    assert report.failures[0].name == "fail_if_articulation_overlaps(samples=8)"
     assert "pair=('base','child')" in report.failures[0].details
 
 
-def test_check_articulation_overlaps_ignores_fixed_pairs() -> None:
+def test_fail_if_articulation_overlaps_ignores_fixed_pairs() -> None:
     ctx = SDKTestContext(
         _build_articulation_overlap_model(joint_type=ArticulationType.FIXED),
     )
 
-    assert ctx.check_articulation_overlaps(max_pose_samples=8)
+    assert ctx.fail_if_articulation_overlaps(max_pose_samples=8)
 
     report = ctx.report()
     assert report.passed
     assert report.failures == ()
-    assert report.checks == ("check_articulation_overlaps(samples=8)",)
+    assert report.checks == ("fail_if_articulation_overlaps(samples=8)",)
 
 
-def test_check_articulation_overlaps_ignores_non_articulation_pairs() -> None:
+def test_fail_if_articulation_overlaps_ignores_non_articulation_pairs() -> None:
     ctx = SDKTestContext(_build_non_articulation_overlap_only_model())
 
-    assert ctx.check_articulation_overlaps(max_pose_samples=8)
+    assert ctx.fail_if_articulation_overlaps(max_pose_samples=8)
 
     report = ctx.report()
     assert report.passed
     assert report.failures == ()
-    assert report.checks == ("check_articulation_overlaps(samples=8)",)
+    assert report.checks == ("fail_if_articulation_overlaps(samples=8)",)
 
 
 def test_allow_overlap_suppresses_reported_articulation_pair() -> None:
@@ -568,12 +601,12 @@ def test_allow_overlap_suppresses_reported_articulation_pair() -> None:
     )
     ctx.allow_overlap("base", "child", reason="bearing sleeve nests around the hinge pin")
 
-    assert ctx.check_articulation_overlaps(max_pose_samples=8)
+    assert ctx.fail_if_articulation_overlaps(max_pose_samples=8)
 
     report = ctx.report()
     assert report.passed
     assert report.failures == ()
-    assert report.checks == ("check_articulation_overlaps(samples=8)",)
+    assert report.checks == ("fail_if_articulation_overlaps(samples=8)",)
     assert report.allowances == (
         "allow_overlap('base', 'child'): bearing sleeve nests around the hinge pin",
     )

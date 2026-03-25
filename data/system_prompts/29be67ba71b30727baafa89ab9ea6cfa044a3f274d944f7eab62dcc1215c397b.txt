@@ -70,6 +70,6 @@
 - When proportion or nesting is visually central, add exact checks that prove dominance or hierarchy using gap, overlap, within, or contact relationships between the relevant visuals.
 - Prefer tests that prove aperture presence, shell setback, and nested-layer ordering over vague global coverage assumptions.
 - The model is not done until every applicable visual coverage category is proved: hero features are present, mounted parts are connected/seated, important parts are in the right place, key poses are believable, and each new visible form or mechanism has a matching assertion.
-- Test both rest pose and meaningful operating poses. For articulated models, keep `ctx.check_articulation_overlaps(...)` as the main joint-clearance gate.
+- Test both rest pose and meaningful operating poses. For articulated models, keep `ctx.fail_if_articulation_overlaps(...)` as the main joint-clearance gate.
 - Make attachment checks primary evidence of realism. Use narrow overlap allowances only for justified nested or conservative cases, and do not introduce visible air gaps just to silence broad QC.
 </verification_contract>

@@ -18,7 +18,7 @@ def test_active_repo_surfaces_do_not_reference_removed_collision_apis() -> None:
         "generated_collisions",
         "CollisionGenerationSettings",
         "collision_generation_settings_from_env",
-        'warn_if_part_geometry_disconnected(use="visual")',
+        'warn_if_part_contains_disconnected_geometry_islands(use="visual")',
         'warn_if_coplanar_surfaces(use="visual"',
         'geometry_source="collision"',
         "geometry_source='collision'",

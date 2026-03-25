@@ -18,10 +18,10 @@ def test_base_scaffold_matches_harness_fallback() -> None:
     assert "def run_tests() -> TestReport:" in scaffold_text
     assert "ctx.check_model_valid()" in scaffold_text
     assert "ctx.check_mesh_files_exist()" in scaffold_text
-    assert "ctx.check_no_isolated_parts()" in scaffold_text
-    assert "ctx.warn_if_part_geometry_disconnected()" in scaffold_text
-    assert "ctx.check_no_part_overlaps()" in scaffold_text
-    assert "ctx.warn_if_articulation_origin_near_geometry" not in scaffold_text
+    assert "ctx.fail_if_isolated_parts()" in scaffold_text
+    assert "ctx.warn_if_part_contains_disconnected_geometry_islands()" in scaffold_text
+    assert "ctx.fail_if_parts_overlap_in_current_pose()" in scaffold_text
+    assert "ctx.warn_if_articulation_origin_far_from_geometry" not in scaffold_text
     assert "ctx.warn_if_articulation_overlaps(max_pose_samples=128)" not in scaffold_text
     assert (
         "ctx.warn_if_overlaps(max_pose_samples=128, ignore_adjacent=True, ignore_fixed=True)"
@@ -50,10 +50,10 @@ def test_hybrid_scaffold_matches_harness_fallback() -> None:
     assert "def run_tests() -> TestReport:" in scaffold_text
     assert "ctx.check_model_valid()" in scaffold_text
     assert "ctx.check_mesh_files_exist()" in scaffold_text
-    assert "ctx.check_no_isolated_parts()" in scaffold_text
-    assert "ctx.warn_if_part_geometry_disconnected()" in scaffold_text
-    assert "ctx.check_no_part_overlaps()" in scaffold_text
-    assert "ctx.warn_if_articulation_origin_near_geometry" not in scaffold_text
+    assert "ctx.fail_if_isolated_parts()" in scaffold_text
+    assert "ctx.warn_if_part_contains_disconnected_geometry_islands()" in scaffold_text
+    assert "ctx.fail_if_parts_overlap_in_current_pose()" in scaffold_text
+    assert "ctx.warn_if_articulation_origin_far_from_geometry" not in scaffold_text
     assert "ctx.warn_if_articulation_overlaps(max_pose_samples=128)" not in scaffold_text
     assert (
         "ctx.warn_if_overlaps(max_pose_samples=128, ignore_adjacent=True, ignore_fixed=True)"

@@ -57,9 +57,9 @@ The scaffolded `run_tests()` starts from this preferred default stack:
 ```python
 ctx.check_model_valid()
 ctx.check_mesh_files_exist()
-ctx.check_no_isolated_parts()
-ctx.warn_if_part_geometry_disconnected()
-ctx.check_no_part_overlaps()
+ctx.fail_if_isolated_parts()
+ctx.warn_if_part_contains_disconnected_geometry_islands()
+ctx.fail_if_parts_overlap_in_current_pose()
 ```
 
 Mesh-backed models:
@@ -71,9 +71,9 @@ What they catch:
 
 - `check_model_valid`: structural SDK/model validation.
 - `check_mesh_files_exist`: missing mesh references.
-- `check_no_isolated_parts`: blocking broad-part support failures, surfaced as isolated parts.
-- `warn_if_part_geometry_disconnected`: warning-tier exact within-part connectivity sensor for disconnected geometry islands.
-- `check_no_part_overlaps`: blocking current-pose part-level overlap gate for broad top-level interpenetration. In the default scaffold, this means the rest pose.
+- `fail_if_isolated_parts`: blocking broad-part support failures, surfaced as isolated parts.
+- `warn_if_part_contains_disconnected_geometry_islands`: warning-tier exact within-part connectivity sensor for disconnected geometry islands.
+- `fail_if_parts_overlap_in_current_pose`: blocking current-pose part-level overlap gate for broad top-level interpenetration. In the default scaffold, this means the rest pose.
 
 These checks are scope-specific sensors, not semantic proof. Add prompt-specific `expect_*` assertions as the actual regression tests for silhouette, structure, proportions, attachment, and mechanism behavior.
 
@@ -92,8 +92,8 @@ Recommended default:
 
 Important:
 
-- `warn_if_articulation_origin_near_geometry(...)` and `warn_if_overlaps(...)` are deprecated as blanket scaffold defaults in new generated code.
-- `warn_if_articulation_origin_near_geometry(...)` is not scale-aware; its tolerance is a fixed metric distance in meters.
+- `warn_if_articulation_origin_far_from_geometry(...)` and `warn_if_overlaps(...)` are deprecated as blanket scaffold defaults in new generated code.
+- `warn_if_articulation_origin_far_from_geometry(...)` is not scale-aware; its tolerance is a fixed metric distance in meters.
 - A tolerance that is sensible for a compact consumer object may be too strict, too loose, or simply irrelevant for a very large assembly.
 - For large objects, treat it as a loose warning sensor or omit it, then use prompt-specific `expect_*` checks to prove the actual mounting and placement claims you care about.
 
@@ -102,7 +102,7 @@ Important:
 Use broad warning heuristics only when they answer a concrete uncertainty that your exact tests do not already cover.
 
 - `warn_if_articulation_overlaps(...)` is useful when joint clearance is uncertain or mechanically important.
-- `warn_if_articulation_origin_near_geometry(...)` can still be useful as an opt-in point-to-geometry sanity check, but it is no longer recommended as a blanket default because it is fixed-scale and often noisy.
+- `warn_if_articulation_origin_far_from_geometry(...)` can still be useful as an opt-in point-to-geometry sanity check, but it is no longer recommended as a blanket default because it is fixed-scale and often noisy.
 - `warn_if_overlaps(...)` can still be useful as an opt-in broad overlap sensor, but it is no longer recommended as a blanket default because it is noisy and underconstrained for attachment quality.
 
 ## Sensor taxonomy
@@ -118,27 +118,25 @@ This is the canonical meaning of each testing sensor family in `TestContext`.
 
 ### Broad-part support and isolation
 
-- `check_no_isolated_parts(...)`
+- `fail_if_isolated_parts(...)`
   Use as the broad-part floating failure signal. It checks whether each part is supported by contacting another part in the checked pose.
 - `allow_isolated_part(...)`
   Use only when a whole part is intentionally freestanding or otherwise isolated in the checked pose.
 
 ### Within-part connectivity
 
-- `warn_if_part_geometry_disconnected(...)`
+- `warn_if_part_contains_disconnected_geometry_islands(...)`
   Use as the default within-part warning sensor. It detects disconnected geometry islands inside one part. This is the preferred scaffold helper when same-part floating should be surfaced but not block.
-- `check_part_geometry_connected(...)`
+- `fail_if_part_contains_disconnected_geometry_islands(...)`
   Use only when disconnected geometry islands inside one part should be treated as blocking. This is stricter than the default scaffold policy.
-- `warn_if_part_geometry_connected(...)`
-  Legacy alias for the warning-tier within-part connectivity sensor. Prefer `warn_if_part_geometry_disconnected(...)` in new code.
 
 ### Overlap sensors
 
-- `check_no_part_overlaps(...)`
+- `fail_if_parts_overlap_in_current_pose(...)`
   Use as the default blocking overlap sensor. It checks current-pose overlap between distinct parts and aggregates findings by part pair. In the scaffold, that means rest-pose part overlap.
-- `check_no_overlaps(...)`
-  Use for a broader sampled-pose overlap sweep across part pairs. This is more aggressive and noisier than `check_no_part_overlaps(...)`.
-- `check_articulation_overlaps(...)`
+- `fail_if_parts_overlap_in_sampled_poses(...)`
+  Use for a broader sampled-pose overlap sweep across part pairs. This is more aggressive and noisier than `fail_if_parts_overlap_in_current_pose(...)`.
+- `fail_if_articulation_overlaps(...)`
   Use when overlap across motion is a blocking requirement for articulated parent/child pairs connected by `REVOLUTE`, `PRISMATIC`, or `CONTINUOUS` joints.
 - `warn_if_articulation_overlaps(...)`
   Use as a warning-tier articulation clearance sensor when joint clearance is uncertain or mechanically important.
@@ -172,7 +170,7 @@ This is the canonical meaning of each testing sensor family in `TestContext`.
 - `expect_aabb_gap(...)`
 - `expect_aabb_overlap(...)`
 - `expect_aabb_contact(...)`
-  These older AABB-envelope helpers still exist for backward compatibility, but new code should prefer the exact `expect_*` family above.
+  These older AABB-envelope helpers still exist, but new code should prefer the exact `expect_*` family above.
 - `expect_joint_motion_axis(...)`
   Deprecated direction-only motion probe. Prefer pose-specific exact checks in important poses.
 
@@ -202,18 +200,15 @@ Prefer these allowance entry points in new code:
 
 Prefer this naming and helper set in new generated tests:
 
-- use articulation terminology consistently: `object_model.get_articulation(...)`, `warn_if_articulation_overlaps(...)`, `check_articulation_overlaps(...)`, and `warn_if_articulation_origin_near_geometry(...)`
-- use `check_no_isolated_parts(...)`, `warn_if_part_geometry_disconnected(...)`, and `check_no_part_overlaps(...)` as the preferred default signal stack
+- use articulation terminology consistently: `object_model.get_articulation(...)`, `warn_if_articulation_overlaps(...)`, `fail_if_articulation_overlaps(...)`, and `warn_if_articulation_origin_far_from_geometry(...)`
+- use `fail_if_isolated_parts(...)`, `warn_if_part_contains_disconnected_geometry_islands(...)`, and `fail_if_parts_overlap_in_current_pose(...)` as the preferred default signal stack
 - use exact `expect_within(...)`, `expect_gap(...)`, `expect_overlap(...)`, and `expect_contact(...)` as the primary intent checks
 - use `warn_if_articulation_overlaps(...)` only when joint clearance is genuinely uncertain or mechanically important
 - use pose-specific exact checks instead of direction-only motion probes
 
-Legacy aliases and deprecated helpers still exist for backward compatibility, but do not use them in new generated code:
+Deprecated helpers still exist where noted, but removed sensor aliases do not:
 
-- prefer `warn_if_articulation_origin_near_geometry(...)` over `warn_if_joint_origin_near_geometry(...)`
-- prefer `check_articulation_origin_near_geometry(...)` over `check_joint_origin_near_geometry(...)`
-- prefer `warn_if_part_geometry_disconnected(...)` over the legacy alias `warn_if_part_geometry_connected(...)`
-- use `check_part_geometry_connected(...)` only when within-part disconnected geometry should block
+- use `fail_if_part_contains_disconnected_geometry_islands(...)` only when within-part disconnected geometry should block
 - prefer exact `expect_*` helpers over deprecated `expect_aabb_*` helpers
 - prefer pose-specific exact checks over deprecated `expect_joint_motion_axis(...)`
 
@@ -366,8 +361,8 @@ frame_leaf = frame.get_visual("frame_leaf")
 
 ctx.check_model_valid()
 ctx.check_mesh_files_exist()
-ctx.check_no_isolated_parts()
-ctx.warn_if_part_geometry_disconnected()
+ctx.fail_if_isolated_parts()
+ctx.warn_if_part_contains_disconnected_geometry_islands()
 ctx.expect_overlap(lid, base, axes="xy", min_overlap=0.05)
 ctx.expect_origin_distance(lid, base, axes="xy", max_dist=0.02)
 ctx.expect_gap(lid, base, axis="z", max_gap=0.001, max_penetration=0.0)

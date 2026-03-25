@@ -509,12 +509,7 @@ def _overlap_warning_signal(parsed: ParsedTestWarning) -> CompileSignal | None:
 
 
 def _disconnected_geometry_signal(parsed: ParsedTestWarning) -> CompileSignal | None:
-    if not parsed.check_name.startswith(
-        (
-            "warn_if_part_geometry_connected(",
-            "warn_if_part_geometry_disconnected(",
-        )
-    ):
+    if not parsed.check_name.startswith("warn_if_part_contains_disconnected_geometry_islands("):
         return None
     summary = "Exact visual connectivity check found disconnected geometry within a part."
     if (
@@ -531,14 +526,9 @@ def _disconnected_geometry_signal(parsed: ParsedTestWarning) -> CompileSignal | 
 
 
 def _articulation_origin_signal(parsed: ParsedTestWarning) -> CompileSignal | None:
-    if not parsed.check_name.startswith(
-        (
-            "warn_if_articulation_origin_near_geometry(",
-            "warn_if_joint_origin_near_geometry(",
-        )
-    ):
+    if not parsed.check_name.startswith("warn_if_articulation_origin_far_from_geometry("):
         return None
-    summary = "Exact articulation-origin distance check reported distant joint origins."
+    summary = "Exact articulation-origin distance check reported distant articulation origins."
     if parsed.detail_text and "far from geometry" not in parsed.detail_text.lower():
         summary = "Articulation-origin distance check reported a warning."
     return _signal_from_spec(

@@ -35,7 +35,7 @@ _GEOMETRY_QC_MARKERS = (
     "geometry overlap check reported overlaps",
     "mesh connectivity check failed",
     "visual connectivity check failed",
-    "check_no_overlaps(",
+    "fail_if_parts_overlap_in_sampled_poses(",
     "expect_contact(",
     "expect_gap(",
     "expect_overlap(",

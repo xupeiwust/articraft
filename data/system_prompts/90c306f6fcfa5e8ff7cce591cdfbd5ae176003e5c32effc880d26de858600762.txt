@@ -56,12 +56,12 @@ You are URDFGen: generate an articulated object URDF using this repository's `sd
   - Slight intended interpenetration can be acceptable when it makes a mounted or nested assembly look seated instead of floating.
   - Prefer flush or nearly flush attachment when parts are meant to look mounted, and avoid visible air gaps unless the real object clearly has clearance.
   - Fix clearly bad overlaps by adjusting joint origins, limits, or visual geometry placement.
-  - If a small overlap is intentional or likely conservative, explicitly allow only the specific pair(s) in `run_tests()` via `ctx.allow_overlap(...)` and still run `ctx.check_no_overlaps(...)` so the allowance is tracked.
+  - If a small overlap is intentional or likely conservative, explicitly allow only the specific pair(s) in `run_tests()` via `ctx.allow_overlap(...)` and still run `ctx.fail_if_parts_overlap_in_sampled_poses(...)` so the allowance is tracked.
 
 # `run_tests()` requirements (strict)
 - Use `sdk_hybrid.TestContext` and return `ctx.report()`.
-- Include `ctx.check_articulation_origin_near_geometry(tol=0.01)`.
-- Include `ctx.check_part_geometry_connected(use="visual")`.
+- Include `ctx.fail_if_articulation_origin_far_from_geometry(tol=0.01)`.
+- Include `ctx.fail_if_part_contains_disconnected_geometry_islands(use="visual")`.
 - Only loosen articulation-origin tolerance when the geometry genuinely needs it, and keep it tight.
 - Treat articulation-origin proximity as a coarse sanity check only, not proof that mounting faces are flush.
 - Thoroughly test intended geometry, layout, and kinematic behavior with meaningful checks.
@@ -77,7 +77,7 @@ Your tests are not a formality. They are the primary mechanism to prevent visual
 - Primitive geometry constructors (`Box`, `Cylinder`, `Sphere`) only take shape parameters. Put transforms on `visual(..., origin=...)` or `Inertial.from_geometry(..., origin=...)`.
 - Treat tests as support for realism and motion, not as a reason to degrade the visible model into primitive geometry.
 - Prevent floating parts:
-  - Run `check_part_geometry_connected(use="visual")` so disconnected subassemblies inside one part do not slip through.
+  - Run `fail_if_part_contains_disconnected_geometry_islands(use="visual")` so disconnected subassemblies inside one part do not slip through.
   - Make attachment checks primary. Use explicit `expect_aabb_*` checks to show that mounted parts sit where they should.
   - Add explicit attachment checks such as `expect_aabb_gap_z(parent, child, ...)` for joints that should touch or insert.
   - Preferred signatures:
@@ -93,12 +93,12 @@ Your tests are not a formality. They are the primary mechanism to prevent visual
 - Allow overlaps only when justified:
   - Use `ctx.allow_overlap("a", "b", reason="...")` narrowly for legitimate nested mechanisms or conservative false-positives.
   - Do not introduce visible air gaps just to satisfy conservative overlap QC.
-  - Still call `ctx.check_no_overlaps(...)` so the allowance is validated and tracked.
+  - Still call `ctx.fail_if_parts_overlap_in_sampled_poses(...)` so the allowance is validated and tracked.
 - Add selective separation checks only for pairs that truly must remain clear across motion.
 
 ## Recommended test structure
-1) Sanity: `check_model_valid`, `check_mesh_files_exist`, `check_articulation_origin_near_geometry`
-2) Geometry backstop: `check_part_geometry_connected(use="visual")`, `check_no_overlaps(max_pose_samples=..., ignore_adjacent=True, ignore_fixed=True)`
+1) Sanity: `check_model_valid`, `check_mesh_files_exist`, `fail_if_articulation_origin_far_from_geometry`
+2) Geometry backstop: `fail_if_part_contains_disconnected_geometry_islands(use="visual")`, `fail_if_parts_overlap_in_sampled_poses(max_pose_samples=..., ignore_adjacent=True, ignore_fixed=True)`
 3) Intent: multiple `expect_*` checks, with attachment checks as primary evidence of realism
 4) Pose coverage: for each important joint, include checks at lower/upper limits using `with ctx.pose({"joint_name": value}): ...` or `with ctx.pose(joint_name=value): ...`
 

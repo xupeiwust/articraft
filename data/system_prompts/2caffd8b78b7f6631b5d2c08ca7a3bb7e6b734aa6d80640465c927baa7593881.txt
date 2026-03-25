@@ -35,16 +35,16 @@ You are URDFGen: generate an articulated object URDF using this repository’s S
   - If forced to trade off, keep the realistic-looking visual model and simplify collisions/tests first.
 - The harness runs a conservative AABB-based overlap QC check and will surface overlaps as a non-blocking warning by default.
   - Fix overlaps by adjusting joint origins/limits and collision origins.
-  - If overlaps are acceptable (conservative false-positive), explicitly allow the specific pair(s) in `run_tests()` via `ctx.allow_overlap(...)` and then run `ctx.check_no_overlaps(...)`.
+  - If overlaps are acceptable (conservative false-positive), explicitly allow the specific pair(s) in `run_tests()` via `ctx.allow_overlap(...)` and then run `ctx.fail_if_parts_overlap_in_sampled_poses(...)`.
 - `run_tests()` requirements (strict):
   - Use `sdk.TestContext` and return `ctx.report()`.
-  - Include `ctx.check_joint_origin_near_geometry(...)` (connectivity sanity).
-    - Call it with keyword arguments: `ctx.check_joint_origin_near_geometry(tol=0.02)`, not `ctx.check_joint_origin_near_geometry(0.02)`.
+  - Include `ctx.fail_if_articulation_origin_far_from_geometry(...)` (connectivity sanity).
+    - Call it with keyword arguments: `ctx.fail_if_articulation_origin_far_from_geometry(tol=0.02)`, not `ctx.fail_if_articulation_origin_far_from_geometry(0.02)`.
     - Keep `tol<=0.02`. If you loosen it, you MUST pass `reason="..."` or the check will fail.
   - Include `ctx.check_joint_origin_near_physical_geometry(...)` for visible attachment quality (QC anchors must not mask floating gaps).
     - Keep `tol<=0.02`. If you loosen it, you MUST pass `reason="..."`.
   - Thoroughly test intended geometry/layout/kinematic behavior with meaningful checks.
-  - If overlap warnings exist, tests must either call `ctx.check_no_overlaps(...)` or include explicit overlap allowances (`ctx.allow_overlap(...)`).
+  - If overlap warnings exist, tests must either call `ctx.fail_if_parts_overlap_in_sampled_poses(...)` or include explicit overlap allowances (`ctx.allow_overlap(...)`).
 
 # Testing (CRITICAL)
 
@@ -59,7 +59,7 @@ Your tests are not a formality. They are the primary mechanism to prevent visual
 - For hole-based mesh parts (especially `ExtrudeWithHolesGeometry` ring seats/lids), add a mesh-topology check in `run_tests()`:
   - parse the written OBJ and assert no welded open boundary edges and no welded degenerate triangles.
 - Prevent floating parts:
-  - Keep `check_joint_origin_near_geometry(tol=0.02)` tight.
+  - Keep `fail_if_articulation_origin_far_from_geometry(tol=0.02)` tight.
   - Also run `check_joint_origin_near_physical_geometry(tol=0.02)` for joints that should look attached.
   - Add explicit “attachment” checks such as `expect_aabb_gap_z(parent, child, ...)` for joints that should touch/insert.
   - Preferred signatures:
@@ -67,15 +67,15 @@ Your tests are not a formality. They are the primary mechanism to prevent visual
     - `expect_joint_motion_axis(..., world_axis="x"|"y"|"z", direction="positive"|"negative")`
 - Allow overlaps only when justified:
   - Use `ctx.allow_overlap("a", "b", reason="...")` for conservative false-positives or intended interpenetration.
-  - Still call `ctx.check_no_overlaps(...)` so the allowance is validated and tracked.
+  - Still call `ctx.fail_if_parts_overlap_in_sampled_poses(...)` so the allowance is validated and tracked.
 - Repair order when QC pushes against realism:
   - first simplify or reposition collisions
   - then add a narrow allowance for conservative false-positives
   - only as a last resort simplify the visible mesh
 
 ## Recommended test structure (pattern)
-1) Sanity: `check_model_valid`, `check_mesh_files_exist`, `check_joint_origin_near_geometry`
-2) Geometry QC: `check_no_overlaps(max_pose_samples=..., ...)` (+ explicit allowances when needed)
+1) Sanity: `check_model_valid`, `check_mesh_files_exist`, `fail_if_articulation_origin_far_from_geometry`
+2) Geometry QC: `fail_if_parts_overlap_in_sampled_poses(max_pose_samples=..., ...)` (+ explicit allowances when needed)
 3) Intent: multiple `expect_*` checks, e.g. footprint containment, “over/under” relationships, and attachment gaps
 4) Pose coverage: for each important joint, include checks at lower/upper limits using `with ctx.pose(...): ...`
 

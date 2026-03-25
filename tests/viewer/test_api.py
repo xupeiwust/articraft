@@ -1914,7 +1914,7 @@ def test_viewer_store_full_materialize_persists_allowed_isolated_part_note(
                 "        antenna,",
                 "        reason='intentionally freestanding decorative part',",
                 "    )",
-                "    ctx.check_no_isolated_parts()",
+                "    ctx.fail_if_isolated_parts()",
                 "    return ctx.report()",
             ]
         ),

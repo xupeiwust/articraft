@@ -82,9 +82,9 @@ def run_tests() -> TestReport:
     door = object_model.get_part("door")
     ctx.check_model_valid()
     ctx.check_mesh_files_exist()
-    ctx.check_no_isolated_parts()
-    ctx.warn_if_part_geometry_disconnected()
-    ctx.check_no_part_overlaps()
+    ctx.fail_if_isolated_parts()
+    ctx.warn_if_part_contains_disconnected_geometry_islands()
+    ctx.fail_if_parts_overlap_in_current_pose()
     ctx.expect_gap(door, body, axis="y", max_gap=0.001, max_penetration=0.0)
     return ctx.report()
 ```
@@ -130,7 +130,7 @@ If you intentionally model in millimeters inside CadQuery, pass `unit_scale=0.00
 - Keep inertials explicit rather than inferring them from CadQuery mesh bounds.
 - Keep `assets=AssetContext.from_script(__file__)` attached to the model so relative mesh refs under `assets/meshes/` remain resolvable during QC and tests.
 - Use the same common testing conventions in `sdk_hybrid`: keep the scaffold baseline check stack, make mounted subassemblies explicit with exact `expect_*` assertions, and add warning-tier heuristics only when they answer a concrete uncertainty.
-- `warn_if_articulation_origin_near_geometry(...)` and `warn_if_overlaps(...)` are deprecated as blanket scaffold defaults in new generated code.
+- `warn_if_articulation_origin_far_from_geometry(...)` and `warn_if_overlaps(...)` are deprecated as blanket scaffold defaults in new generated code.
 - Use `warn_if_articulation_overlaps(...)` only when joint clearance is genuinely uncertain or mechanically important.
 - Do not try to infer URDF joints from CadQuery assemblies. Declare joints explicitly in `ArticulatedObject`.
 - Be careful with repeated `faces(...).workplane()` feature loops: the workplane origin can drift between iterations, so repeated cuts are often safer when built from a fixed global plane and subtracted explicitly.

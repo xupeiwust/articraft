@@ -52,6 +52,6 @@
 - Prefer object-first tests: resolve `Part`, `Articulation`, and named `Visual` objects once, then pass those exact objects into `ctx.expect_*`, `ctx.allow_*`, and `ctx.pose(...)`.
 - Prefer many small exact visual checks such as `expect_contact(...)`, `expect_gap(...)`, `expect_overlap(...)`, and `expect_within(...)` over a few vague assertions.
 - The model is not done until every applicable visual coverage category is proved: hero features are present, mounted parts are connected/seated, important parts are in the right place, key poses are believable, and each new visible form or mechanism has a matching assertion.
-- Test both rest pose and meaningful operating poses. For articulated models, keep `ctx.check_articulation_overlaps(...)` as the main joint-clearance gate.
+- Test both rest pose and meaningful operating poses. For articulated models, keep `ctx.fail_if_articulation_overlaps(...)` as the main joint-clearance gate.
 - Make attachment checks primary evidence of realism. Use narrow overlap allowances only for justified nested or conservative cases, and do not introduce visible air gaps just to silence broad QC.
 </verification_contract>

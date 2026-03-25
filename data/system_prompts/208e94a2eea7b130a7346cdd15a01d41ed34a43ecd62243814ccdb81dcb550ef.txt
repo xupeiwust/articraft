@@ -74,6 +74,6 @@
 - Test both rest pose and meaningful operating poses. Use `ctx.warn_if_articulation_overlaps(...)` only when joint clearance is genuinely uncertain or mechanically important.
 - If a warning-tier heuristic fires, investigate it with `probe_model` before editing geometry or relaxing thresholds.
 - If support/floating is ambiguous, use `probe_model` helpers first, then encode the real invariant in `run_tests()`.
-- Deprecated as default scaffold heuristics in new generated code: `warn_if_articulation_origin_near_geometry(...)`, `warn_if_overlaps(...)`, and blanket `warn_if_articulation_overlaps(...)`. Add them only with specific justification.
+- Deprecated as default scaffold heuristics in new generated code: `warn_if_articulation_origin_far_from_geometry(...)`, `warn_if_overlaps(...)`, and blanket `warn_if_articulation_overlaps(...)`. Add them only with specific justification.
 - Make attachment checks primary evidence of realism. Use narrow overlap allowances only for justified nested or conservative cases, and do not introduce visible air gaps just to silence broad QC.
 </verification_contract>

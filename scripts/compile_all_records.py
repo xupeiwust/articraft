@@ -57,7 +57,7 @@ _GEOMETRY_QC_MARKERS = (
     "visual connectivity check failed",
     "visual/collision geometry appear misaligned",
     "overlaps detected",
-    "check_no_overlaps(",
+    "fail_if_parts_overlap_in_sampled_poses(",
     "expect_aabb_",
     "expect_xy_distance",
     "expect_above",

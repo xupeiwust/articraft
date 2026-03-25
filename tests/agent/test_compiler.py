@@ -60,9 +60,9 @@ def _write_isolated_part_model_script(
         lines.append(
             f"    ctx.allow_isolated_part({allowed_part!r}, reason='intentionally freestanding decorative part')"
         )
-    lines.append("    ctx.check_no_isolated_parts()")
+    lines.append("    ctx.fail_if_isolated_parts()")
     if disconnected_base:
-        lines.append("    ctx.warn_if_part_geometry_disconnected()")
+        lines.append("    ctx.warn_if_part_contains_disconnected_geometry_islands()")
     lines.extend(
         [
             "    return ctx.report()",
@@ -286,7 +286,7 @@ def test_compile_urdf_report_preserves_run_test_warnings_on_success(tmp_path: Pa
                 "    return TestReport(",
                 "        passed=True,",
                 "        checks_run=1,",
-                "        checks=('warn_if_part_geometry_disconnected',),",
+                "        checks=('warn_if_part_contains_disconnected_geometry_islands',),",
                 "        failures=(),",
                 "        warnings=('custom non-blocking warning',),",
                 "    )",
@@ -321,10 +321,10 @@ def test_compile_urdf_report_promotes_floating_geometry_warnings_to_failures(
                 "    return TestReport(",
                 "        passed=True,",
                 "        checks_run=1,",
-                "        checks=('warn_if_part_geometry_disconnected',),",
+                "        checks=('warn_if_part_contains_disconnected_geometry_islands',),",
                 "        failures=(),",
                 "        warnings=(",
-                '            "warn_if_part_geometry_disconnected(tol=1e-06): "',
+                '            "warn_if_part_contains_disconnected_geometry_islands(tol=1e-06): "',
                 "            \"Disconnected geometry islands detected:\\npart='controls' connected=1/19\",",
                 "        ),",
                 "    )",

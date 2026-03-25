@@ -99,16 +99,16 @@ You are ArticraftAgent: generate an articulated object using this repository's S
   - Slight intended interpenetration can be acceptable when it makes a mounted or nested assembly look seated instead of floating.
   - Prefer flush or nearly flush attachment when parts are meant to look mounted, and avoid visible air gaps unless the real object clearly has clearance.
   - Fix clearly bad overlaps by adjusting visual geometry, joint origins, and limits.
-  - If a small overlap is intentional or likely conservative, explicitly allow only the specific pair(s) in `run_tests()` via `ctx.allow_overlap(...)` and still run `ctx.check_no_overlaps(...)` so the allowance is tracked.
+  - If a small overlap is intentional or likely conservative, explicitly allow only the specific pair(s) in `run_tests()` via `ctx.allow_overlap(...)` and still run `ctx.fail_if_parts_overlap_in_sampled_poses(...)` so the allowance is tracked.
 </qc_and_overlap_handling>
 
 <run_tests_requirements>
 - Use `sdk.TestContext` and return `ctx.report()`.
-- Include `ctx.check_articulation_origin_near_geometry(tol=0.015)`.
+- Include `ctx.fail_if_articulation_origin_far_from_geometry(tol=0.015)`.
 - The harness truncates articulation-origin tolerances to 3 decimals and caps them at `0.15`.
 - Only loosen articulation-origin tolerance when the geometry genuinely needs it, and keep it tight.
 - Treat articulation-origin proximity as a coarse sanity check only, not proof that mounting faces are flush.
-- Include `ctx.check_part_geometry_connected(use="visual")`.
+- Include `ctx.fail_if_part_contains_disconnected_geometry_islands(use="visual")`.
 - Thoroughly test intended geometry/layout/kinematic behavior with meaningful checks.
 </run_tests_requirements>
 
@@ -123,7 +123,7 @@ You are ArticraftAgent: generate an articulated object using this repository's S
 - Add prompt-specific checks for the primary hero features, the prompt-named visible features, and the dominant visible forms so the most important visual commitments are enforced, not just generic structural sanity.
 - When you add a new visible form or mechanism, add or refine tests that prove that new claim before moving on. Do not let geometry complexity outpace test coverage.
 - Prevent floating parts:
-  - Run `check_part_geometry_connected(use="visual")` so disconnected subassemblies inside one part do not slip through.
+  - Run `fail_if_part_contains_disconnected_geometry_islands(use="visual")` so disconnected subassemblies inside one part do not slip through.
   - Make attachment checks primary. Use explicit `expect_aabb_*` checks to show that mounted parts sit where they should.
   - Add explicit “attachment” checks such as `expect_aabb_gap(parent, child, axis="z", ...)` for joints that should touch/insert.
   - Preferred signatures:
@@ -141,7 +141,7 @@ You are ArticraftAgent: generate an articulated object using this repository's S
 - Allow overlaps only when justified:
   - Use `ctx.allow_overlap("a", "b", reason="...")` narrowly for legitimate nested mechanisms or conservative false-positives.
   - Do not introduce visible air gaps just to satisfy conservative overlap QC.
-  - Still call `ctx.check_no_overlaps(...)` so the allowance is validated and tracked.
+  - Still call `ctx.fail_if_parts_overlap_in_sampled_poses(...)` so the allowance is validated and tracked.
 - Add selective separation checks only for pairs that truly must remain clear across motion.
 - Repair order when QC pushes against realism:
   - first fix visual geometry or joint placement
@@ -150,8 +150,8 @@ You are ArticraftAgent: generate an articulated object using this repository's S
 </testing_principles>
 
 <recommended_test_structure>
-1) Sanity: `check_model_valid`, `check_mesh_files_exist`, `check_articulation_origin_near_geometry`, `check_part_geometry_connected`
-2) Geometry backstop: `check_no_overlaps(max_pose_samples=..., ignore_adjacent=True, ignore_fixed=True)` (+ explicit allowances when needed)
+1) Sanity: `check_model_valid`, `check_mesh_files_exist`, `fail_if_articulation_origin_far_from_geometry`, `fail_if_part_contains_disconnected_geometry_islands`
+2) Geometry backstop: `fail_if_parts_overlap_in_sampled_poses(max_pose_samples=..., ignore_adjacent=True, ignore_fixed=True)` (+ explicit allowances when needed)
 3) Intent: multiple `expect_*` checks, with attachment checks as primary evidence of realism
 4) Pose coverage: for each important joint, include checks at lower/upper limits using `with ctx.pose({"joint_name": value}): ...` or `with ctx.pose(joint_name=value): ...`
 </recommended_test_structure>

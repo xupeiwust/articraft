@@ -393,10 +393,10 @@ def test_workbench_init_record_command(
     assert "def run_tests() -> TestReport:" in model_text
     assert "ctx.check_model_valid()" in model_text
     assert "ctx.check_mesh_files_exist()" in model_text
-    assert "ctx.check_no_isolated_parts()" in model_text
-    assert "ctx.warn_if_part_geometry_disconnected()" in model_text
-    assert "ctx.check_no_part_overlaps()" in model_text
-    assert "ctx.warn_if_articulation_origin_near_geometry" not in model_text
+    assert "ctx.fail_if_isolated_parts()" in model_text
+    assert "ctx.warn_if_part_contains_disconnected_geometry_islands()" in model_text
+    assert "ctx.fail_if_parts_overlap_in_current_pose()" in model_text
+    assert "ctx.warn_if_articulation_origin_far_from_geometry" not in model_text
     assert "ctx.warn_if_articulation_overlaps(max_pose_samples=128)" not in model_text
     assert (
         "ctx.warn_if_overlaps(max_pose_samples=128, ignore_adjacent=True, ignore_fixed=True)"

@@ -63,7 +63,7 @@ def test_compile_signal_bundle_includes_test_warnings_and_allowances() -> None:
         test_report=SDKTestReport(
             passed=True,
             checks_run=1,
-            checks=("check_no_overlaps",),
+            checks=("fail_if_parts_overlap_in_sampled_poses",),
             failures=(),
             warnings=("neighbor overlaps downgraded to warnings",),
             allowances=("allow_overlap('door', 'frame'): hinge nesting",),
@@ -83,8 +83,8 @@ def test_compile_signal_bundle_parses_common_broad_qc_warning_families() -> None
             checks_run=4,
             checks=(
                 "warn_if_overlaps",
-                "warn_if_part_geometry_disconnected",
-                "warn_if_articulation_origin_near_geometry",
+                "warn_if_part_contains_disconnected_geometry_islands",
+                "warn_if_articulation_origin_far_from_geometry",
                 "warn_if_coplanar_surfaces",
             ),
             failures=(),
@@ -93,10 +93,10 @@ def test_compile_signal_bundle_parses_common_broad_qc_warning_families() -> None
                 "Overlaps detected (overlap_tol=0.001, overlap_volume_tol=0):\n"
                 "relation=adjacent-revolute pair=('body','door') pose_index=0 depth=(0.01,0.02,0.03) "
                 "min_depth=0.01 vol=6e-06 elem_a=#0 'hinge_leaf':Box elem_b=#1 'door_shell':Box pose={}",
-                "warn_if_part_geometry_disconnected(tol=1e-06): "
+                "warn_if_part_contains_disconnected_geometry_islands(tol=1e-06): "
                 "Disconnected geometry islands detected:\n"
                 "part='frame' connected=2/3",
-                "warn_if_articulation_origin_near_geometry(tol=0.015): "
+                "warn_if_articulation_origin_far_from_geometry(tol=0.015): "
                 "Articulation origin(s) far from geometry:\n"
                 "joint='hinge' parent='body' child='door' dist_parent=0.02 dist_child=0.03 tol=0.015",
                 "Overlaps detected but allowed by justification: 1 overlaps.",
@@ -129,7 +129,7 @@ def test_compile_signal_bundle_parses_common_broad_qc_warning_families() -> None
     )
     assert (
         articulation_signal.summary
-        == "Exact articulation-origin distance check reported distant joint origins."
+        == "Exact articulation-origin distance check reported distant articulation origins."
     )
 
     allowed_signal = next(signal for signal in bundle.signals if signal.kind == "allowed_overlap")
@@ -138,16 +138,16 @@ def test_compile_signal_bundle_parses_common_broad_qc_warning_families() -> None
     assert any(signal.kind == "test_warning" for signal in bundle.signals)
 
 
-def test_compile_signal_bundle_accepts_legacy_part_geometry_warning_name() -> None:
+def test_compile_signal_bundle_accepts_part_geometry_warning_name() -> None:
     bundle = build_compile_signal_bundle(
         status="success",
         test_report=SDKTestReport(
             passed=True,
             checks_run=1,
-            checks=("warn_if_part_geometry_connected",),
+            checks=("warn_if_part_contains_disconnected_geometry_islands",),
             failures=(),
             warnings=(
-                "warn_if_part_geometry_connected(tol=1e-06): "
+                "warn_if_part_contains_disconnected_geometry_islands(tol=1e-06): "
                 "Disconnected geometry islands detected:\n"
                 "part='frame' connected=2/3",
             ),
@@ -345,7 +345,7 @@ def test_compile_signal_bundle_renders_allowed_isolated_part_distinctly() -> Non
         test_report=SDKTestReport(
             passed=True,
             checks_run=2,
-            checks=("check_no_isolated_parts()", "custom_check"),
+            checks=("fail_if_isolated_parts()", "custom_check"),
             failures=(),
             warnings=(
                 "Isolated parts detected but allowed by justification: 1 part(s) ['antenna'].\n"
@@ -383,7 +383,7 @@ def test_harness_injects_structured_compile_signals() -> None:
             test_report=SDKTestReport(
                 passed=True,
                 checks_run=2,
-                checks=("check_no_overlaps", "check_visuals"),
+                checks=("fail_if_parts_overlap_in_sampled_poses", "check_visuals"),
                 failures=(),
                 warnings=("visual connectivity drift detected",),
                 allowances=("allow_overlap('door', 'frame'): hinge nesting",),

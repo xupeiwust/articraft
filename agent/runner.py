@@ -116,12 +116,12 @@ def run_tests() -> TestReport:
 
     # Preferred default QC stack:
     # 1) blocking broad-part floating check for isolated parts
-    ctx.check_no_isolated_parts()
+    ctx.fail_if_isolated_parts()
     # 2) warning-tier within-part sensor for disconnected geometry islands
-    ctx.warn_if_part_geometry_disconnected()
+    ctx.warn_if_part_contains_disconnected_geometry_islands()
     # 3) blocking rest-pose part-to-part overlap backstop for broad interpenetration
     # If a seated or nested fit is intentional, justify it with `ctx.allow_overlap(...)`.
-    ctx.check_no_part_overlaps()
+    ctx.fail_if_parts_overlap_in_current_pose()
 
     # Encode the actual visual/mechanical claims with prompt-specific exact checks.
     # If you add a warning-tier heuristic and it fires, investigate it with
