@@ -370,6 +370,7 @@ class BatchRunConfig:
     keyboard_pause_enabled: bool
     qc_blurb_text: str | None = None
     post_success_design_audit: bool = True
+    keep_awake: bool = True
 
 
 def _read_csv_rows(spec_path: Path) -> list[dict[str, str]]:
@@ -929,6 +930,7 @@ async def _run_batch_row(
         category_slug=row.category_slug,
         dataset_id=allocation.dataset_id,
         run_mode="dataset_batch",
+        post_success_design_audit=row.post_success_design_audit,
         context=context,
         persist_run_metadata=False,
         persist_run_result=False,
@@ -1151,6 +1153,7 @@ async def run_dataset_batch(config: BatchRunConfig) -> dict[str, Any]:
             "thinking_level": row.thinking_level,
             "max_turns": row.max_turns,
             "sdk_package": row.sdk_package,
+            "post_success_design_audit": row.post_success_design_audit,
             "success": outcome.success,
             "message": outcome.message,
             "turn_count": outcome.turn_count,
@@ -1270,6 +1273,7 @@ def build_batch_config(
     system_prompt_path: str,
     sdk_docs_mode: str,
     qc_blurb_path: str | None,
+    post_success_design_audit: bool = True,
     resume: bool,
     resume_policy: str,
     keep_awake: bool,
@@ -1280,7 +1284,11 @@ def build_batch_config(
     repo = StorageRepo(repo_root.resolve())
     repo.ensure_layout()
     spec_path, batch_spec_id = _resolve_spec_path(repo, spec_arg)
-    rows = _load_batch_rows(spec_path, repo)
+    rows = _load_batch_rows(
+        spec_path,
+        repo,
+        default_post_success_design_audit=post_success_design_audit,
+    )
     resolved_concurrency = _resolve_batch_concurrency(concurrency, candidate_count=len(rows))
     if resume_policy not in RESUME_POLICIES:
         raise ValueError(f"Unsupported resume policy: {resume_policy}")
