@@ -73,8 +73,8 @@ ctx.fail_if_parts_overlap_in_current_pose()
 Then add prompt-specific exact assertions such as `expect_gap(...)`,
 `expect_overlap(...)`, `expect_contact(...)`, and `expect_within(...)`.
 
-For bounded `REVOLUTE` and `PRISMATIC` joints, also add explicit lower/upper
-pose checks for both no overlap and no floating:
+For stricter coverage on bounded `REVOLUTE` and `PRISMATIC` joints, you can also
+add explicit lower/upper pose checks for both no overlap and no floating:
 
 ```python
 hinge = object_model.get_articulation("lid_hinge")
