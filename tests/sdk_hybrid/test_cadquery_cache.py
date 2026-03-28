@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import cadquery as cq
 import pytest
 
@@ -18,7 +20,7 @@ def test_export_cadquery_mesh_reuses_existing_destination_without_retessellating
         assets=assets,
     )
 
-    mesh_bytes = export.mesh_path.read_bytes()
+    mesh_bytes = Path(str(export.mesh.materialized_path)).read_bytes()
 
     def fail_tessellate(*args, **kwargs):
         raise AssertionError("tessellation should not run for a cache-hit destination")
@@ -31,7 +33,7 @@ def test_export_cadquery_mesh_reuses_existing_destination_without_retessellating
         assets=assets,
     )
 
-    assert cached_export.mesh_path.read_bytes() == mesh_bytes
+    assert Path(str(cached_export.mesh.materialized_path)).read_bytes() == mesh_bytes
     assert cached_export.local_aabb == export.local_aabb
 
 
@@ -57,5 +59,8 @@ def test_export_cadquery_mesh_uses_content_addressed_cache_across_filenames(
         assets=assets,
     )
 
-    assert export_b.mesh_path.read_bytes() == export_a.mesh_path.read_bytes()
+    assert (
+        Path(str(export_b.mesh.materialized_path)).read_bytes()
+        == Path(str(export_a.mesh.materialized_path)).read_bytes()
+    )
     assert export_b.local_aabb == export_a.local_aabb

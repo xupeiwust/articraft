@@ -64,7 +64,6 @@ from __future__ import annotations
 from math import cos, pi, sin
 
 from sdk import (
-    AssetContext,
     ArticulatedObject,
     ArticulationType,
     Box,
@@ -83,11 +82,8 @@ from sdk import (
 )
 
 
-ASSETS = AssetContext.from_script(__file__)
-
-
 def _save_mesh(name: str, geometry):
-    return mesh_from_geometry(geometry, ASSETS.mesh_path(name))
+    return mesh_from_geometry(geometry, name)
 
 
 def _mirror_x(points: list[tuple[float, float, float]]) -> list[tuple[float, float, float]]:
@@ -198,7 +194,7 @@ def _wheel_visuals(
 
 
 def build_object_model() -> ArticulatedObject:
-    model = ArticulatedObject(name="atv_quad_bike", assets=ASSETS)
+    model = ArticulatedObject(name="atv_quad_bike")
 
     body_red = model.material("body_red", rgba=(0.66, 0.10, 0.09, 1.0))
     black_plastic = model.material("black_plastic", rgba=(0.10, 0.11, 0.12, 1.0))

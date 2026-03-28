@@ -46,13 +46,10 @@ TestReport(
 ## Construction
 
 ```python
-ctx = TestContext(model, asset_root=None, seed=0)
+ctx = TestContext(model, seed=0)
 ```
 
 - `model`: the `ArticulatedObject` under test.
-- `asset_root`: optional root used to resolve relative mesh paths. Pass this when
-  the model uses mesh files and did not already capture assets via
-  `AssetContext.from_script(...)`.
 - `seed`: deterministic sampling seed for pose-sampled checks.
 
 Generated models should end `run_tests()` with:
@@ -67,7 +64,7 @@ Use this as the default scaffold for new tests:
 
 ```python
 ctx.check_model_valid()
-ctx.check_mesh_files_exist()
+ctx.check_mesh_assets_ready()
 ctx.fail_if_isolated_parts()
 ctx.warn_if_part_contains_disconnected_geometry_islands()
 ctx.fail_if_parts_overlap_in_current_pose()
@@ -213,10 +210,10 @@ All methods in this section record a named check and return `True` on pass,
 
 Runs `model.validate(strict=True)`.
 
-### `check_mesh_files_exist() -> bool`
+### `check_mesh_assets_ready() -> bool`
 
-Verifies that every referenced mesh file exists after resolving relative paths
-against `asset_root`.
+Verifies that every referenced mesh asset has been materialized and is
+available to the runtime.
 
 ### `fail_if_articulation_origin_far_from_geometry(*, tol=0.015, reason=None, name=None) -> bool`
 
@@ -365,22 +362,18 @@ axes.
 ## Minimal Example
 
 ```python
-from pathlib import Path
-
 from sdk import TestContext
-
-HERE = Path(__file__).resolve().parent
 
 
 def run_tests(object_model):
-    ctx = TestContext(object_model, asset_root=HERE, seed=0)
+    ctx = TestContext(object_model, seed=0)
 
     base = object_model.get_part("base")
     lid = object_model.get_part("lid")
     hinge = object_model.get_articulation("lid_hinge")
 
     ctx.check_model_valid()
-    ctx.check_mesh_files_exist()
+    ctx.check_mesh_assets_ready()
     ctx.fail_if_isolated_parts()
     ctx.warn_if_part_contains_disconnected_geometry_islands()
     ctx.fail_if_parts_overlap_in_current_pose()

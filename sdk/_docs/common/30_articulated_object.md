@@ -31,7 +31,6 @@ ArticulatedObject(
     articulations: list[Articulation] = [],
     materials: list[Material] = [],
     meta: dict[str, object] = {},
-    assets: AssetContext | None = None,
 )
 ```
 
@@ -42,7 +41,9 @@ Important fields:
 - `articulations`: authored articulations.
 - `materials`: registered materials.
 - `meta`: optional model-level metadata.
-- `assets`: optional asset context for mesh-backed models.
+- Mesh assets are runtime-managed. Author mesh-backed visuals through helpers
+  such as `mesh_from_geometry(...)`, `mesh_from_input(...)`, and
+  `mesh_from_cadquery(...)`.
 
 ## Authoring Helpers
 

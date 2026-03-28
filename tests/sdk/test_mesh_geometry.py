@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import logging
 from math import pi
+from pathlib import Path
 
 import pytest
 
 import sdk
 from sdk._core.v0 import mesh as mesh_module
+from sdk._core.v0.assets import AssetSession, activate_asset_session
 
 
 def _bounds(
@@ -234,6 +236,52 @@ def test_mesh_from_geometry_preserves_general_rotation_transform(tmp_path) -> No
     assert row1[1] == pytest.approx(0.0, abs=1e-9)
     assert row2[2] == pytest.approx(1.0, abs=1e-9)
     assert row3 == (0.0, 0.0, 0.0, 1.0)
+
+
+def test_mesh_from_geometry_uses_managed_logical_names_without_paths() -> None:
+    mesh = sdk.mesh_from_geometry(
+        sdk.BoxGeometry((0.20, 0.10, 0.06)),
+        "door_panel",
+    )
+
+    assert mesh.filename == "assets/meshes/door_panel.obj"
+    assert mesh.name == "door_panel"
+    assert mesh.materialized_path is not None
+    assert Path(mesh.materialized_path).exists()
+
+
+def test_mesh_from_input_uses_managed_input_catalog(tmp_path) -> None:
+    inputs_dir = tmp_path / "inputs"
+    inputs_dir.mkdir(parents=True, exist_ok=True)
+    (inputs_dir / "plate.obj").write_text(
+        "\n".join(
+            [
+                "o plate",
+                "v 0 0 0",
+                "v 1 0 0",
+                "v 0 1 0",
+                "f 1 2 3",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    session = AssetSession(tmp_path, inputs_root=inputs_dir)
+    with activate_asset_session(session):
+        mesh = sdk.mesh_from_input("plate")
+
+    assert mesh.filename == "assets/meshes/plate.obj"
+    assert mesh.materialized_path is not None
+    assert Path(mesh.materialized_path).exists()
+
+
+def test_mesh_from_geometry_rejects_reusing_a_name_for_different_geometry(tmp_path) -> None:
+    session = AssetSession(tmp_path)
+    with activate_asset_session(session):
+        sdk.mesh_from_geometry(sdk.BoxGeometry((0.20, 0.10, 0.06)), "shared_name")
+        with pytest.raises(sdk.ValidationError, match="reused with different geometry"):
+            sdk.mesh_from_geometry(sdk.BoxGeometry((0.30, 0.10, 0.06)), "shared_name")
 
 
 def test_tube_from_spline_points_supports_bezier_paths() -> None:

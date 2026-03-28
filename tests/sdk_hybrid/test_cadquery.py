@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from sdk._core.v0.assets import AssetContext
@@ -30,8 +32,8 @@ def test_export_cadquery_components_splits_workplane_stack(tmp_path) -> None:
     assert len(exports) == 2
     assert exports[0].mesh.filename == "assets/meshes/pair__component_001.obj"
     assert exports[1].mesh.filename == "assets/meshes/pair__component_002.obj"
-    assert exports[0].mesh_path.exists()
-    assert exports[1].mesh_path.exists()
+    assert Path(str(exports[0].mesh.materialized_path)).exists()
+    assert Path(str(exports[1].mesh.materialized_path)).exists()
     assert exports[0].local_aabb == ((-0.5, -0.5, -0.5), (0.5, 0.5, 0.5))
     assert exports[1].local_aabb == ((2.5, -0.5, -0.5), (3.5, 0.5, 0.5))
 

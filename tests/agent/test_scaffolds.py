@@ -11,13 +11,11 @@ def test_base_scaffold_matches_harness_fallback() -> None:
     scaffold_text = scaffold_path.read_text(encoding="utf-8")
 
     assert scaffold_text == _minimal_scaffold_text(sdk_package="sdk")
-    assert (
-        "from sdk import ArticulatedObject, AssetContext, TestContext, TestReport" in scaffold_text
-    )
+    assert "from sdk import ArticulatedObject, TestContext, TestReport" in scaffold_text
     assert "def build_object_model() -> ArticulatedObject:" in scaffold_text
     assert "def run_tests() -> TestReport:" in scaffold_text
     assert "ctx.check_model_valid()" in scaffold_text
-    assert "ctx.check_mesh_files_exist()" in scaffold_text
+    assert "ctx.check_mesh_assets_ready()" in scaffold_text
     assert "ctx.fail_if_isolated_parts()" in scaffold_text
     assert "ctx.warn_if_part_contains_disconnected_geometry_islands()" in scaffold_text
     assert "ctx.fail_if_parts_overlap_in_current_pose()" in scaffold_text
@@ -55,14 +53,11 @@ def test_hybrid_scaffold_matches_harness_fallback() -> None:
     scaffold_text = scaffold_path.read_text(encoding="utf-8")
 
     assert scaffold_text == _minimal_scaffold_text(sdk_package="sdk_hybrid")
-    assert (
-        "from sdk_hybrid import ArticulatedObject, AssetContext, TestContext, TestReport"
-        in scaffold_text
-    )
+    assert "from sdk_hybrid import ArticulatedObject, TestContext, TestReport" in scaffold_text
     assert "def build_object_model() -> ArticulatedObject:" in scaffold_text
     assert "def run_tests() -> TestReport:" in scaffold_text
     assert "ctx.check_model_valid()" in scaffold_text
-    assert "ctx.check_mesh_files_exist()" in scaffold_text
+    assert "ctx.check_mesh_assets_ready()" in scaffold_text
     assert "ctx.fail_if_isolated_parts()" in scaffold_text
     assert "ctx.warn_if_part_contains_disconnected_geometry_islands()" in scaffold_text
     assert "ctx.fail_if_parts_overlap_in_current_pose()" in scaffold_text

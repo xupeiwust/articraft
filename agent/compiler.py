@@ -19,6 +19,7 @@ from agent.feedback import build_compile_signal_bundle
 from agent.models import CompileReport, CompileSignalBundle
 from agent.mp_utils import get_mp_context
 from agent.prompts import normalize_sdk_package
+from sdk._core.v0.assets import activate_asset_session, asset_session_for_script
 from sdk._dependencies import ensure_sdk_hybrid_dependencies
 
 logger = logging.getLogger(__name__)
@@ -218,6 +219,27 @@ def compile_urdf_report(
     target: str = "full",
     rewrite_visual_glb: bool | None = None,
 ) -> CompileReport:
+    session = asset_session_for_script(script_path)
+    with activate_asset_session(session):
+        return _compile_urdf_report_impl(
+            script_path,
+            sdk_package=sdk_package,
+            run_checks=run_checks,
+            ignore_geom_qc=ignore_geom_qc,
+            target=target,
+            rewrite_visual_glb=rewrite_visual_glb,
+        )
+
+
+def _compile_urdf_report_impl(
+    script_path: Path,
+    *,
+    sdk_package: str = "sdk",
+    run_checks: bool = True,
+    ignore_geom_qc: bool = False,
+    target: str = "full",
+    rewrite_visual_glb: bool | None = None,
+) -> CompileReport:
     """Execute a generated script and return export XML plus non-blocking warnings."""
     globals_dict = load_model_globals(script_path, sdk_package=sdk_package)
     warnings: list[str] = []
@@ -387,9 +409,9 @@ def _warn_cwd_relative_asset_paths(*, script_path: Path, warnings: list[str]) ->
     warnings.append(
         "URDF compile warning (non-blocking): cwd-relative asset paths detected.\n"
         + "\n".join(f"- {item}" for item in findings)
-        + "\nUse script-local paths instead: `ASSETS = AssetContext.from_script(__file__)`, "
-        "`MESH_DIR = ASSETS.mesh_dir`, and set `ArticulatedObject(..., assets=ASSETS)` "
-        "or `TestContext(..., asset_root=ASSETS.asset_root)`."
+        + "\nUse managed mesh helpers instead: `mesh_from_geometry(..., name='part_name')`, "
+        "`mesh_from_input('existing_mesh')`, `mesh_from_cadquery(..., name='part_name')`, "
+        "and `TestContext(object_model)`."
     )
 
 

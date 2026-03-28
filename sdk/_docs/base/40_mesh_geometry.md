@@ -294,12 +294,12 @@ cut_opening_on_face(
 ```python
 mesh_from_geometry(
     geometry: MeshGeometry,
-    filename: str | os.PathLike[str],
+    name: str,
 ) -> Mesh
 ```
 
-- Writes the mesh to OBJ.
-- Returns an `sdk.Mesh` descriptor pointing at that OBJ.
+- Materializes the mesh to an internal OBJ managed by the runtime.
+- Returns an `sdk.Mesh` descriptor pointing at the managed asset.
 - Use this when the final authored visual should be mesh-backed.
 
 ## Advice
@@ -320,7 +320,8 @@ mesh_from_geometry(
 
 - Use procedural meshes to author visible shape.
 - Convert the final mesh to `sdk.Mesh` with `mesh_from_geometry(...)`.
-- Keep asset-root wiring consistent so tests and exports can resolve the OBJ.
+- Use stable logical names such as `"shell"` or `"rear_bracket"` rather than
+  paths.
 
 ## Examples
 
@@ -331,7 +332,7 @@ shell = ExtrudeGeometry(
     cap=True,
     center=True,
 )
-mesh = mesh_from_geometry(shell, "assets/meshes/shell.obj")
+mesh = mesh_from_geometry(shell, "shell")
 ```
 
 ```python

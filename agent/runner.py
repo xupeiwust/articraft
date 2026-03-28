@@ -100,20 +100,18 @@ _DRAFT_MODEL_TEMPLATE = """from __future__ import annotations
 # The target prompt for this record is stored in prompt.txt.
 # Extend this scaffold with a valid Articraft model implementation.
 
-from sdk import AssetContext, ArticulatedObject, TestContext, TestReport
-
-ASSETS = AssetContext.from_script(__file__)
+from sdk import ArticulatedObject, TestContext, TestReport
 
 
 def build_object_model() -> ArticulatedObject:
-    model = ArticulatedObject(name="draft_model", assets=ASSETS)
+    model = ArticulatedObject(name="draft_model")
     return model
 
 
 def run_tests() -> TestReport:
-    ctx = TestContext(object_model, asset_root=ASSETS.asset_root)
+    ctx = TestContext(object_model)
     ctx.check_model_valid()
-    ctx.check_mesh_files_exist()
+    ctx.check_mesh_assets_ready()
 
     # Preferred default QC stack:
     # 1) blocking grounded-component floating check for disconnected part groups

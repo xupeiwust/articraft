@@ -392,7 +392,7 @@ def test_workbench_init_record_command(
     assert "def build_object_model() -> ArticulatedObject:" in model_text
     assert "def run_tests() -> TestReport:" in model_text
     assert "ctx.check_model_valid()" in model_text
-    assert "ctx.check_mesh_files_exist()" in model_text
+    assert "ctx.check_mesh_assets_ready()" in model_text
     assert "ctx.fail_if_isolated_parts()" in model_text
     assert "ctx.warn_if_part_contains_disconnected_geometry_islands()" in model_text
     assert "ctx.fail_if_parts_overlap_in_current_pose()" in model_text

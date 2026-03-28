@@ -237,7 +237,6 @@ Part(
     collisions: list[Collision] = [],
     inertial: Inertial | None = None,
     meta: dict[str, object] = {},
-    assets: AssetContext | None = None,
 )
 ```
 

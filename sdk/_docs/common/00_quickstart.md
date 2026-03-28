@@ -21,10 +21,7 @@ tests, and exports the result. Do not emit URDF XML directly.
 ## Recommended Imports
 
 ```python
-from pathlib import Path
-
 from sdk import (
-    AssetContext,
     ArticulatedObject,
     ArticulationType,
     Box,
@@ -36,26 +33,18 @@ from sdk import (
 )
 ```
 
-## Asset Pattern
+## Managed Mesh Pattern
 
-Use script-local asset roots whenever the model writes or references meshes.
+Use logical mesh names. The runtime decides where OBJ files live.
 
-```python
-ASSETS = AssetContext.from_script(__file__)
-HERE = ASSETS.asset_root
-```
-
-- Construct the model with `ArticulatedObject(..., assets=ASSETS)`.
-- In tests, either use `TestContext(object_model)` when the model already has
-  `assets=ASSETS`, or pass `asset_root=HERE` explicitly.
+- Generate procedural meshes with `mesh_from_geometry(..., "part_name")`.
+- Import existing OBJ inputs with `mesh_from_input("mesh_name")`.
+- Use `TestContext(object_model)`; do not wire asset roots manually.
 
 ## Minimal Example
 
 ```python
-from pathlib import Path
-
 from sdk import (
-    AssetContext,
     ArticulatedObject,
     ArticulationType,
     Box,
@@ -66,12 +55,9 @@ from sdk import (
     TestReport,
 )
 
-ASSETS = AssetContext.from_script(__file__)
-HERE = Path(__file__).resolve().parent
-
 
 def build_object_model() -> ArticulatedObject:
-    model = ArticulatedObject(name="example_box_lid", assets=ASSETS)
+    model = ArticulatedObject(name="example_box_lid")
 
     base = model.part("base")
     base.visual(
@@ -111,13 +97,13 @@ def build_object_model() -> ArticulatedObject:
 
 
 def run_tests() -> TestReport:
-    ctx = TestContext(object_model, asset_root=HERE)
+    ctx = TestContext(object_model)
     base = object_model.get_part("base")
     lid = object_model.get_part("lid")
     hinge = object_model.get_articulation("base_to_lid")
 
     ctx.check_model_valid()
-    ctx.check_mesh_files_exist()
+    ctx.check_mesh_assets_ready()
     ctx.fail_if_isolated_parts()
     ctx.warn_if_part_contains_disconnected_geometry_islands()
     ctx.fail_if_parts_overlap_in_current_pose()

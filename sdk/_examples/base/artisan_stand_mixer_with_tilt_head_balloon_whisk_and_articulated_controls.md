@@ -44,7 +44,6 @@ import math
 from sdk import (
     ArticulatedObject,
     ArticulationType,
-    AssetContext,
     Box,
     Cylinder,
     CylinderGeometry,
@@ -62,11 +61,9 @@ from sdk import (
     tube_from_spline_points,
 )
 
-ASSETS = AssetContext.from_script(__file__)
-
 
 def build_object_model() -> ArticulatedObject:
-    model = ArticulatedObject(name="artisan_mixer", assets=ASSETS)
+    model = ArticulatedObject(name="artisan_mixer")
 
     body_metal = model.material("body_metal", rgba=(0.7, 0.1, 0.1, 1.0))
     bowl_metal = model.material("bowl_metal", rgba=(0.9, 0.9, 0.9, 1.0))
@@ -76,7 +73,7 @@ def build_object_model() -> ArticulatedObject:
 
     bp_profile = rounded_rect_profile(0.35, 0.22, 0.05)
     bp_geom = ExtrudeGeometry(bp_profile, 0.04)
-    bp_mesh = mesh_from_geometry(bp_geom, ASSETS.mesh_path("base_plate.obj"))
+    bp_mesh = mesh_from_geometry(bp_geom, "base_plate")
     base_unit.visual(
         bp_mesh,
         origin=Origin(xyz=(0.075, 0.0, 0.02)),
@@ -88,7 +85,7 @@ def build_object_model() -> ArticulatedObject:
     neck_s1 = [(x, y, 0.18) for x, y in rounded_rect_profile(0.08, 0.1, 0.03)]
     neck_s2 = [(x, y, 0.35) for x, y in rounded_rect_profile(0.06, 0.08, 0.025)]
     neck_geom = section_loft([neck_s0, neck_s1, neck_s2])
-    neck_mesh = mesh_from_geometry(neck_geom, ASSETS.mesh_path("neck.obj"))
+    neck_mesh = mesh_from_geometry(neck_geom, "neck")
     base_unit.visual(
         neck_mesh,
         origin=Origin(xyz=(-0.06, 0.0, 0.04)),
@@ -101,7 +98,7 @@ def build_object_model() -> ArticulatedObject:
     outer_prof = [(0.02, 0.0), (0.06, 0.01), (0.1, 0.06), (0.1, 0.15), (0.105, 0.16)]
     inner_prof = [(0.0, 0.005), (0.055, 0.015), (0.095, 0.06), (0.095, 0.155)]
     bowl_geom = LatheGeometry.from_shell_profiles(outer_prof, inner_prof, segments=48)
-    bowl_mesh = mesh_from_geometry(bowl_geom, ASSETS.mesh_path("bowl.obj"))
+    bowl_mesh = mesh_from_geometry(bowl_geom, "bowl")
     bowl.visual(bowl_mesh, material=bowl_metal, name="bowl_shell")
     bowl.inertial = Inertial.from_geometry(Cylinder(radius=0.1, length=0.16), mass=0.8)
 
@@ -122,7 +119,7 @@ def build_object_model() -> ArticulatedObject:
     head_s1 = yz_section(0.14, 0.16, 0.05, 0.15)
     head_s2 = yz_section(0.1, 0.12, 0.04, 0.35)
     head_geom = section_loft([head_s0, head_s1, head_s2])
-    head_mesh = mesh_from_geometry(head_geom, ASSETS.mesh_path("head.obj"))
+    head_mesh = mesh_from_geometry(head_geom, "head")
     head.visual(head_mesh, material=body_metal, name="head_shell")
     head.inertial = Inertial.from_geometry(
         Box((0.35, 0.16, 0.16)),
@@ -204,7 +201,6 @@ def build_object_model() -> ArticulatedObject:
             tilt_lock,
             base_unit,
             point_hint=(-0.055, 0.055, 0.255),
-            asset_root=ASSETS,
             prefer_collisions=False,
             child_prefer_collisions=False,
         ),
@@ -221,7 +217,6 @@ def build_object_model() -> ArticulatedObject:
             speed_control,
             head,
             point_hint=(0.145, 0.075, 0.005),
-            asset_root=ASSETS,
             prefer_collisions=False,
             child_prefer_collisions=False,
         ),
@@ -274,7 +269,7 @@ def build_object_model() -> ArticulatedObject:
         final_whisk_geom.merge(w_geom)
     final_whisk_geom.merge(whisk_wires[0])
 
-    whisk_mesh = mesh_from_geometry(final_whisk_geom, ASSETS.mesh_path("whisk.obj"))
+    whisk_mesh = mesh_from_geometry(final_whisk_geom, "whisk")
     whisk.visual(whisk_mesh, material=bowl_metal, name="whisk_shell")
     whisk.inertial = Inertial.from_geometry(Cylinder(radius=0.05, length=0.16), mass=0.2)
 
@@ -290,9 +285,9 @@ def build_object_model() -> ArticulatedObject:
 
 
 def run_tests() -> TestReport:
-    ctx = TestContext(object_model, asset_root=ASSETS.asset_root)
+    ctx = TestContext(object_model)
     ctx.check_model_valid()
-    ctx.check_mesh_files_exist()
+    ctx.check_mesh_assets_ready()
 
     base_unit = object_model.get_part("base_unit")
     bowl = object_model.get_part("bowl")

@@ -1022,13 +1022,12 @@ class TestContext:
         except Exception as exc:
             return self._record("check_model_valid", False, f"{type(exc).__name__}: {exc}")
 
-    def check_mesh_files_exist(self) -> bool:
+    def check_mesh_assets_ready(self) -> bool:
         links = getattr(self.model, "parts", None)
         if not isinstance(links, list):
             return self._record(
-                "check_mesh_files_exist", False, "model.parts missing or not a list"
+                "check_mesh_assets_ready", False, "model.parts missing or not a list"
             )
-        root = self._asset_root()
         missing: List[str] = []
         for link in links:
             for field_name in ("visuals",):
@@ -1040,21 +1039,32 @@ class TestContext:
                     filename = getattr(geom, "filename", None)
                     if filename is None:
                         continue
-                    filename = str(filename)
-                    if not filename:
+                    filename_text = str(filename)
+                    if not filename_text:
                         continue
-                    p = Path(filename)
-                    if not p.is_absolute():
-                        p = (root / p).resolve()
-                    if not p.exists():
-                        missing.append(str(p))
+                    try:
+                        resolved = resolve_mesh_path(
+                            filename_text,
+                            assets=self.asset_root or getattr(self.model, "assets", None),
+                        )
+                    except Exception:
+                        resolved = None
+                    if resolved is None or not resolved.exists():
+                        missing.append(str(filename_text if resolved is None else resolved))
         if missing:
             preview = "\n".join(missing[:12])
             more = "" if len(missing) <= 12 else f"\n... ({len(missing) - 12} more)"
             return self._record(
-                "check_mesh_files_exist", False, f"Missing mesh files:\n{preview}{more}"
+                "check_mesh_assets_ready", False, f"Missing mesh assets:\n{preview}{more}"
             )
-        return self._record("check_mesh_files_exist", True)
+        return self._record("check_mesh_assets_ready", True)
+
+    def check_mesh_files_exist(self) -> bool:
+        self._warn_deprecated_helper(
+            "check_mesh_files_exist()",
+            "check_mesh_assets_ready()",
+        )
+        return self.check_mesh_assets_ready()
 
     def _check_articulation_origin_far_from_geometry_impl(
         self,

@@ -65,6 +65,7 @@ REPAIR RULES
 GEOMETRY
 - Import from `sdk_hybrid`, not `sdk`. Keep `build_object_model()` and `run_tests()` as top-level entry points.
 - Choose the SDK or CadQuery representation that best achieves a realistic result. Use simple primitives when they are truly correct for the form; use hybrid/CadQuery geometry when visible shells, cavities, curves, or transitions need more shape freedom.
+- When authoring mesh-backed visuals, use managed logical names like `mesh_from_cadquery(..., "door_panel")`; do not reason about filesystem paths.
 - Model openings, cavities, and hollow structure explicitly. Never cap a visible opening with a solid placeholder.
 - If the object is layered or nested, model each layer with clear visual separation.
 - Hidden supports and internal structure can use simple primitives.
@@ -80,6 +81,7 @@ GEOMETRY
 
 TESTING
 - Use `sdk_hybrid.TestContext`, keep the scaffolded baseline check stack, return `ctx.report()`.
+- Prefer `TestContext(object_model)` and `ctx.check_mesh_assets_ready()`; do not pass asset roots in new code.
 - Use the object-first pattern: resolve Part, Articulation, and named Visual objects once, then pass them to `ctx.expect_*` and `ctx.allow_*` helpers. See SDK docs for exact signatures.
 - Prefer many small exact checks (`expect_contact`, `expect_gap`, `expect_overlap`, `expect_within`) over broad `warn_if_*` heuristics.
 - `fail_if_parts_overlap_*` and `ctx.allow_overlap(...)` mean real 3D interpenetration; `expect_overlap(...)` is a separate projected footprint check. If parts are nested but should remain clear, use `expect_within(...)`, `expect_gap(...)`, `expect_contact(...)`, and/or `expect_overlap(...)` instead of `allow_overlap(...)`.
