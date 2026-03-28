@@ -778,7 +778,7 @@ def render_compile_signals(
         parts.extend(["", "<notes>", _render_signal_lines(notes), "</notes>"])
 
     response_rules = [
-        "- Failures are blocking and should be investigated. If an isolated or floating part/group is intentional because the assembly requires a gap, you may explicitly bypass it; otherwise decide judiciously whether the issue should be fixed or the representation should be rethought.",
+        "- Failures are blocking and should be investigated. If an isolated or floating part/group is intentional because the assembly requires a gap, you may explicitly bypass it; for `fail_if_parts_overlap_in_current_pose(...)`, be judicious because some overlaps are reasonable and may call for an allow-list or a better exact check rather than a geometry rewrite.",
         "- Warnings are possible issues and should not be ignored, but they are noisier than failures.",
         "- Before relaxing a warning-tier signal, use probe_model or exact checks to confirm whether it reflects a real issue.",
         "- If a signal reveals a wrong representation or composition, replace that representation instead of tuning around it.",
