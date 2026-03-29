@@ -307,11 +307,13 @@ class ArticraftAgent:
         *,
         bundle: CompileSignalBundle,
     ) -> bool:
-        if not any(signal.severity == "warning" for signal in bundle.signals):
+        warning_signals = [signal for signal in bundle.signals if signal.severity == "warning"]
+        if not warning_signals:
             return False
 
+        sticky_warning = any(signal.kind == "disconnected_geometry" for signal in warning_signals)
         sig = self._compile_signal_signature(bundle)
-        if sig in self._seen_compile_signal_sigs:
+        if not sticky_warning and sig in self._seen_compile_signal_sigs:
             return False
         self._seen_compile_signal_sigs.add(sig)
 
