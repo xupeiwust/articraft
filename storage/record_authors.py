@@ -115,7 +115,12 @@ def model_file_creator_author(repo_root: Path, model_path: Path) -> str | None:
     return None
 
 
-def rating_line_author(repo_root: Path, record_path: Path) -> tuple[str | None, bool]:
+def _record_json_line_author(
+    repo_root: Path,
+    record_path: Path,
+    *,
+    field_name: str,
+) -> tuple[str | None, bool]:
     pathspec = _pathspec_for_repo_path(repo_root, record_path)
     output = _run_git(
         repo_root,
@@ -127,6 +132,7 @@ def rating_line_author(repo_root: Path, record_path: Path) -> tuple[str | None, 
     )
 
     current_author: str | None = None
+    field_prefix = f'"{field_name}":'
     for raw_line in output.splitlines():
         if raw_line.startswith("author "):
             current_author = canonicalize_record_author(raw_line[len("author ") :])
@@ -134,8 +140,8 @@ def rating_line_author(repo_root: Path, record_path: Path) -> tuple[str | None, 
         if not raw_line.startswith("\t"):
             continue
 
-        line = raw_line[1:]
-        if '"rating":' in line:
+        line = raw_line[1:].lstrip()
+        if line.startswith(field_prefix):
             return current_author, True
         current_author = None
 
@@ -160,6 +166,63 @@ class RecordRatedBySyncSummary:
     missing_record_ids: list[str] = field(default_factory=list)
     missing_rating_line_record_ids: list[str] = field(default_factory=list)
     missing_git_author_record_ids: list[str] = field(default_factory=list)
+
+
+def _sync_record_line_author_field(
+    repo: StorageRepo,
+    *,
+    record_ids: list[str] | None,
+    rating_field: str,
+    rated_by_field: str,
+    clear_when_rating_is_null: bool = False,
+) -> RecordRatedBySyncSummary:
+    repo.ensure_layout()
+    _ensure_git_repo(repo.root)
+
+    candidate_record_ids = _candidate_record_ids(repo, record_ids)
+    summary = RecordRatedBySyncSummary(scanned=len(candidate_record_ids))
+    for record_id in candidate_record_ids:
+        record_path = repo.layout.record_metadata_path(record_id)
+        record = repo.read_json(record_path)
+        if not isinstance(record, dict):
+            summary.missing_record_ids.append(record_id)
+            continue
+
+        existing_rated_by = canonicalize_record_author(record.get(rated_by_field))
+        if clear_when_rating_is_null and record.get(rating_field) is None:
+            if existing_rated_by is None:
+                summary.unchanged_record_ids.append(record_id)
+                continue
+            record[rated_by_field] = None
+            repo.write_json(record_path, record)
+            summary.updated_record_ids.append(record_id)
+            continue
+
+        try:
+            rated_by, found_rating_line = _record_json_line_author(
+                repo.root,
+                record_path,
+                field_name=rating_field,
+            )
+        except RuntimeError:
+            summary.missing_git_author_record_ids.append(record_id)
+            continue
+
+        if not found_rating_line:
+            summary.missing_rating_line_record_ids.append(record_id)
+            continue
+        if rated_by is None:
+            summary.missing_git_author_record_ids.append(record_id)
+            continue
+        if existing_rated_by == rated_by:
+            summary.unchanged_record_ids.append(record_id)
+            continue
+
+        record[rated_by_field] = rated_by
+        repo.write_json(record_path, record)
+        summary.updated_record_ids.append(record_id)
+
+    return summary
 
 
 def sync_record_authors(
@@ -207,38 +270,23 @@ def sync_record_rated_by(
     *,
     record_ids: list[str] | None = None,
 ) -> RecordRatedBySyncSummary:
-    repo.ensure_layout()
-    _ensure_git_repo(repo.root)
+    return _sync_record_line_author_field(
+        repo,
+        record_ids=record_ids,
+        rating_field="rating",
+        rated_by_field="rated_by",
+    )
 
-    record_ids = _candidate_record_ids(repo, record_ids)
-    summary = RecordRatedBySyncSummary(scanned=len(record_ids))
-    for record_id in record_ids:
-        record_path = repo.layout.record_metadata_path(record_id)
-        record = repo.read_json(record_path)
-        if not isinstance(record, dict):
-            summary.missing_record_ids.append(record_id)
-            continue
 
-        try:
-            rated_by, found_rating_line = rating_line_author(repo.root, record_path)
-        except RuntimeError:
-            summary.missing_git_author_record_ids.append(record_id)
-            continue
-
-        if not found_rating_line:
-            summary.missing_rating_line_record_ids.append(record_id)
-            continue
-        if rated_by is None:
-            summary.missing_git_author_record_ids.append(record_id)
-            continue
-
-        existing_rated_by = canonicalize_record_author(record.get("rated_by"))
-        if existing_rated_by == rated_by:
-            summary.unchanged_record_ids.append(record_id)
-            continue
-
-        record["rated_by"] = rated_by
-        repo.write_json(record_path, record)
-        summary.updated_record_ids.append(record_id)
-
-    return summary
+def sync_record_secondary_rated_by(
+    repo: StorageRepo,
+    *,
+    record_ids: list[str] | None = None,
+) -> RecordRatedBySyncSummary:
+    return _sync_record_line_author_field(
+        repo,
+        record_ids=record_ids,
+        rating_field="secondary_rating",
+        rated_by_field="secondary_rated_by",
+        clear_when_rating_is_null=True,
+    )

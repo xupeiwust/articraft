@@ -3,8 +3,10 @@ export type RecordSummary = {
   title: string;
   prompt_preview: string;
   rating: number | null;
+  secondary_rating: number | null;
   author: string | null;
   rated_by: string | null;
+  secondary_rated_by: string | null;
   created_at: string | null;
   updated_at: string | null;
   sdk_package: string | null;
@@ -122,6 +124,12 @@ export type RecordDetail = {
 export type RecordRatingResponse = {
   record_id: string;
   rating: number;
+  updated_at: string | null;
+};
+
+export type RecordSecondaryRatingResponse = {
+  record_id: string;
+  secondary_rating: number;
   updated_at: string | null;
 };
 
@@ -256,6 +264,10 @@ export type ViewerAction =
   | { type: "UPDATE_STAGING"; payload: StagingEntry[] }
   | { type: "SET_INSPECTOR_TAB"; payload: InspectorTab }
   | { type: "UPDATE_RECORD_RATING"; payload: { recordId: string; rating: number; updatedAt: string | null } }
+  | {
+      type: "UPDATE_RECORD_SECONDARY_RATING";
+      payload: { recordId: string; secondaryRating: number; updatedAt: string | null };
+    }
   | { type: "TOGGLE_INSPECTOR" }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null }

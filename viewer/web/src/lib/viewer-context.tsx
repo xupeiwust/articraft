@@ -414,27 +414,28 @@ function getNextSelection(
   return firstRecord ? { kind: "record", recordId: firstRecord.record_id } : null;
 }
 
-function updateRecordSummaryRating(
+function updateRecordSummaryFields(
   summary: RecordSummary | null,
   recordId: string,
-  rating: number,
-  updatedAt: string | null,
+  updates: Partial<
+    Pick<RecordSummary, "rating" | "secondary_rating" | "rated_by" | "secondary_rated_by" | "updated_at">
+  >,
 ): RecordSummary | null {
   if (!summary || summary.record_id !== recordId) {
     return summary;
   }
   return {
     ...summary,
-    rating,
-    updated_at: updatedAt,
+    ...updates,
   };
 }
 
-function updateBootstrapRecordRating(
+function updateBootstrapRecordFields(
   bootstrap: ViewerBootstrap | null,
   recordId: string,
-  rating: number,
-  updatedAt: string | null,
+  updates: Partial<
+    Pick<RecordSummary, "rating" | "secondary_rating" | "rated_by" | "secondary_rated_by" | "updated_at">
+  >,
 ): ViewerBootstrap | null {
   if (!bootstrap) {
     return bootstrap;
@@ -444,11 +445,11 @@ function updateBootstrapRecordRating(
     ...bootstrap,
     workbench_entries: bootstrap.workbench_entries.map((entry) => ({
       ...entry,
-      record: updateRecordSummaryRating(entry.record, recordId, rating, updatedAt),
+      record: updateRecordSummaryFields(entry.record, recordId, updates),
     })),
     dataset_entries: bootstrap.dataset_entries.map((entry) => ({
       ...entry,
-      record: updateRecordSummaryRating(entry.record, recordId, rating, updatedAt),
+      record: updateRecordSummaryFields(entry.record, recordId, updates),
     })),
   };
 }
@@ -552,11 +553,27 @@ function viewerReducer(state: ViewerState, action: ViewerAction): ViewerState {
     case "UPDATE_RECORD_RATING":
       return {
         ...state,
-        bootstrap: updateBootstrapRecordRating(
+        bootstrap: updateBootstrapRecordFields(
           state.bootstrap,
           action.payload.recordId,
-          action.payload.rating,
-          action.payload.updatedAt,
+          {
+            rating: action.payload.rating,
+            rated_by: null,
+            updated_at: action.payload.updatedAt,
+          },
+        ),
+      };
+    case "UPDATE_RECORD_SECONDARY_RATING":
+      return {
+        ...state,
+        bootstrap: updateBootstrapRecordFields(
+          state.bootstrap,
+          action.payload.recordId,
+          {
+            secondary_rating: action.payload.secondaryRating,
+            secondary_rated_by: null,
+            updated_at: action.payload.updatedAt,
+          },
         ),
       };
     case "TOGGLE_INSPECTOR":

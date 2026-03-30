@@ -7,6 +7,7 @@ import type {
   OpenRecordFolderResult,
   OpenStagingFolderResult,
   RecordRatingResponse,
+  RecordSecondaryRatingResponse,
   RecordSummary,
   RepoStats,
   RatingFilter,
@@ -283,4 +284,21 @@ export async function saveRecordRating(recordId: string, rating: number): Promis
     throw new Error(await readErrorMessage(response));
   }
   return (await response.json()) as RecordRatingResponse;
+}
+
+export async function saveRecordSecondaryRating(
+  recordId: string,
+  secondaryRating: number,
+): Promise<RecordSecondaryRatingResponse> {
+  const response = await fetch(`/api/records/${encodeURIComponent(recordId)}/secondary-rating`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ secondary_rating: secondaryRating }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+  return (await response.json()) as RecordSecondaryRatingResponse;
 }

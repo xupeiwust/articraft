@@ -9,6 +9,7 @@ from storage.record_authors import (
     canonicalize_record_author,
     sync_record_authors,
     sync_record_rated_by,
+    sync_record_secondary_rated_by,
 )
 from storage.records import RecordStore
 from storage.repo import StorageRepo
@@ -295,3 +296,156 @@ def test_sync_record_rated_by_updates_existing_value_when_rating_changes(tmp_pat
     assert record["rated_by"] == "RuiningLi"
     assert summary.updated_record_ids == [record_id]
     assert summary.unchanged_record_ids == []
+
+
+def test_sync_record_rated_by_ignores_secondary_rating_line_updates(tmp_path: Path) -> None:
+    repo = StorageRepo(tmp_path)
+    repo.ensure_layout()
+
+    record_id = "rec_rating_003"
+    RecordStore(repo).write_record(
+        Record(
+            schema_version=2,
+            record_id=record_id,
+            created_at="2026-03-20T00:00:00Z",
+            updated_at="2026-03-20T00:00:00Z",
+            rating=None,
+            kind="generated_model",
+            prompt_kind="single_prompt",
+            category_slug="hinges",
+            source=SourceRef(run_id="run_rating_003"),
+            sdk_package="sdk",
+            provider="openai",
+            model_id="gpt-5.4",
+            display=DisplayMetadata(title="Secondary rating isolation", prompt_preview="secondary"),
+            artifacts=RecordArtifacts(
+                prompt_txt="prompt.txt",
+                prompt_series_json=None,
+                model_py="model.py",
+                provenance_json="provenance.json",
+                cost_json=None,
+            ),
+            collections=["dataset"],
+        )
+    )
+
+    _git(tmp_path, "init")
+    _git(tmp_path, "config", "user.name", "Test User")
+    _git(tmp_path, "config", "user.email", "test@example.com")
+    _git(tmp_path, "add", ".")
+    _git(
+        tmp_path,
+        "commit",
+        "-m",
+        "Add record",
+        env={
+            "GIT_AUTHOR_NAME": "Matthew Zhou",
+            "GIT_AUTHOR_EMAIL": "matt@example.com",
+            "GIT_COMMITTER_NAME": "Matthew Zhou",
+            "GIT_COMMITTER_EMAIL": "matt@example.com",
+        },
+    )
+
+    record_path = repo.layout.record_metadata_path(record_id)
+    record = repo.read_json(record_path)
+    record["secondary_rating"] = 5
+    repo.write_json(record_path, record)
+    _git(tmp_path, "add", str(record_path.relative_to(tmp_path)))
+    _git(
+        tmp_path,
+        "commit",
+        "-m",
+        "Add secondary rating",
+        env={
+            "GIT_AUTHOR_NAME": "shawlyu",
+            "GIT_AUTHOR_EMAIL": "shawlyu@example.com",
+            "GIT_COMMITTER_NAME": "shawlyu",
+            "GIT_COMMITTER_EMAIL": "shawlyu@example.com",
+        },
+    )
+
+    primary_summary = sync_record_rated_by(repo)
+    secondary_summary = sync_record_secondary_rated_by(repo)
+    persisted = repo.read_json(record_path)
+
+    assert persisted["rated_by"] == "mattzh72"
+    assert persisted["secondary_rated_by"] == "shawlyu"
+    assert primary_summary.updated_record_ids == [record_id]
+    assert secondary_summary.updated_record_ids == [record_id]
+
+
+def test_sync_record_secondary_rated_by_clears_when_secondary_rating_is_null(
+    tmp_path: Path,
+) -> None:
+    repo = StorageRepo(tmp_path)
+    repo.ensure_layout()
+
+    record_id = "rec_rating_004"
+    RecordStore(repo).write_record(
+        Record(
+            schema_version=2,
+            record_id=record_id,
+            created_at="2026-03-20T00:00:00Z",
+            updated_at="2026-03-20T00:00:00Z",
+            rating=None,
+            kind="generated_model",
+            prompt_kind="single_prompt",
+            category_slug="hinges",
+            source=SourceRef(run_id="run_rating_004"),
+            sdk_package="sdk",
+            provider="openai",
+            model_id="gpt-5.4",
+            display=DisplayMetadata(title="Secondary rating clear", prompt_preview="secondary"),
+            artifacts=RecordArtifacts(
+                prompt_txt="prompt.txt",
+                prompt_series_json=None,
+                model_py="model.py",
+                provenance_json="provenance.json",
+                cost_json=None,
+            ),
+            collections=["dataset"],
+            secondary_rating=4,
+            secondary_rated_by="mattzh72",
+        )
+    )
+
+    _git(tmp_path, "init")
+    _git(tmp_path, "config", "user.name", "Test User")
+    _git(tmp_path, "config", "user.email", "test@example.com")
+    _git(tmp_path, "add", ".")
+    _git(
+        tmp_path,
+        "commit",
+        "-m",
+        "Add rated secondary record",
+        env={
+            "GIT_AUTHOR_NAME": "Matthew Zhou",
+            "GIT_AUTHOR_EMAIL": "matt@example.com",
+            "GIT_COMMITTER_NAME": "Matthew Zhou",
+            "GIT_COMMITTER_EMAIL": "matt@example.com",
+        },
+    )
+
+    record_path = repo.layout.record_metadata_path(record_id)
+    record = repo.read_json(record_path)
+    record["secondary_rating"] = None
+    repo.write_json(record_path, record)
+    _git(tmp_path, "add", str(record_path.relative_to(tmp_path)))
+    _git(
+        tmp_path,
+        "commit",
+        "-m",
+        "Clear secondary rating",
+        env={
+            "GIT_AUTHOR_NAME": "Ruining Li",
+            "GIT_AUTHOR_EMAIL": "ruining@example.com",
+            "GIT_COMMITTER_NAME": "Ruining Li",
+            "GIT_COMMITTER_EMAIL": "ruining@example.com",
+        },
+    )
+
+    summary = sync_record_secondary_rated_by(repo)
+    persisted = repo.read_json(record_path)
+
+    assert persisted["secondary_rated_by"] is None
+    assert summary.updated_record_ids == [record_id]

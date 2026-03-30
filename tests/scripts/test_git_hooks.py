@@ -85,9 +85,11 @@ def test_run_post_commit_record_author_sync_amends_latest_commit(tmp_path: Path)
     assert result.touched_record_metadata_ids == [record_id]
     assert result.updated_author_record_ids == [record_id]
     assert result.updated_rated_by_record_ids == [record_id]
+    assert result.updated_secondary_rated_by_record_ids == []
     assert result.updated_record_ids == [record_id]
     assert updated_record["author"] == "RuiningLi"
     assert updated_record["rated_by"] == "RuiningLi"
+    assert updated_record["secondary_rated_by"] is None
     assert current_head != original_head
     assert _git(tmp_path, "rev-list", "--count", "HEAD") == "1"
     assert _git(tmp_path, "log", "-1", "--format=%an") == "Ruining Li"
@@ -167,9 +169,11 @@ def test_run_post_commit_record_author_sync_leaves_initialized_author_unchanged(
     assert result.touched_record_metadata_ids == []
     assert result.updated_author_record_ids == []
     assert result.updated_rated_by_record_ids == []
+    assert result.updated_secondary_rated_by_record_ids == []
     assert result.updated_record_ids == []
     assert persisted["author"] == "mattzh72"
     assert persisted["rated_by"] == "mattzh72"
+    assert persisted["secondary_rated_by"] is None
     assert _git(tmp_path, "rev-parse", "HEAD") == original_head
 
 
@@ -248,8 +252,89 @@ def test_run_post_commit_record_author_sync_updates_rated_by_when_rating_changes
     assert result.touched_record_metadata_ids == [record_id]
     assert result.updated_author_record_ids == []
     assert result.updated_rated_by_record_ids == [record_id]
+    assert result.updated_secondary_rated_by_record_ids == []
     assert persisted["author"] == "mattzh72"
     assert persisted["rated_by"] == "shawlyu"
+    assert _git(tmp_path, "rev-parse", "HEAD") != original_head
+
+
+def test_run_post_commit_record_author_sync_updates_secondary_rated_by_when_secondary_rating_changes(
+    tmp_path: Path,
+) -> None:
+    repo = StorageRepo(tmp_path)
+    repo.ensure_layout()
+    record_id = "rec_hook_004"
+    RecordStore(repo).write_record(
+        Record(
+            schema_version=2,
+            record_id=record_id,
+            created_at="2026-03-30T10:00:00Z",
+            updated_at="2026-03-30T10:00:00Z",
+            rating=None,
+            author="mattzh72",
+            rated_by="mattzh72",
+            kind="generated_model",
+            prompt_kind="single_prompt",
+            category_slug="hinges",
+            source=SourceRef(run_id="run_hook_004"),
+            sdk_package="sdk",
+            provider="openai",
+            model_id="gpt-5.4",
+            display=DisplayMetadata(title="Hook", prompt_preview="hook"),
+            artifacts=RecordArtifacts(
+                prompt_txt="prompt.txt",
+                prompt_series_json=None,
+                model_py="model.py",
+                provenance_json="provenance.json",
+                cost_json=None,
+            ),
+            collections=["dataset"],
+        )
+    )
+
+    _init_git_repo(tmp_path)
+    _git(tmp_path, "add", ".")
+    _git(
+        tmp_path,
+        "commit",
+        "-m",
+        "Add record with no secondary rating",
+        env={
+            "GIT_AUTHOR_NAME": "Matthew Zhou",
+            "GIT_AUTHOR_EMAIL": "matt@example.com",
+            "GIT_COMMITTER_NAME": "Matthew Zhou",
+            "GIT_COMMITTER_EMAIL": "matt@example.com",
+        },
+    )
+
+    record_path = repo.layout.record_metadata_path(record_id)
+    record = repo.read_json(record_path)
+    record["secondary_rating"] = 2
+    repo.write_json(record_path, record)
+    _git(tmp_path, "add", str(record_path.relative_to(tmp_path)))
+    _git(
+        tmp_path,
+        "commit",
+        "-m",
+        "Update secondary rating",
+        env={
+            "GIT_AUTHOR_NAME": "shawlyu",
+            "GIT_AUTHOR_EMAIL": "shawlyu@example.com",
+            "GIT_COMMITTER_NAME": "shawlyu",
+            "GIT_COMMITTER_EMAIL": "shawlyu@example.com",
+        },
+    )
+    original_head = _git(tmp_path, "rev-parse", "HEAD")
+
+    result = git_hooks.run_post_commit_record_author_sync(tmp_path)
+
+    persisted = repo.read_json(record_path)
+    assert result.touched_record_ids == [record_id]
+    assert result.touched_record_metadata_ids == [record_id]
+    assert result.updated_author_record_ids == []
+    assert result.updated_rated_by_record_ids == []
+    assert result.updated_secondary_rated_by_record_ids == [record_id]
+    assert persisted["secondary_rated_by"] == "shawlyu"
     assert _git(tmp_path, "rev-parse", "HEAD") != original_head
 
 

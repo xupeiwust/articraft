@@ -8,7 +8,11 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from storage.record_authors import sync_record_authors, sync_record_rated_by
+from storage.record_authors import (
+    sync_record_authors,
+    sync_record_rated_by,
+    sync_record_secondary_rated_by,
+)
 from storage.repo import StorageRepo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -119,10 +123,15 @@ class PostCommitRecordMetadataResult:
     touched_record_metadata_ids: list[str] = field(default_factory=list)
     updated_author_record_ids: list[str] = field(default_factory=list)
     updated_rated_by_record_ids: list[str] = field(default_factory=list)
+    updated_secondary_rated_by_record_ids: list[str] = field(default_factory=list)
 
     @property
     def updated_record_ids(self) -> list[str]:
-        return sorted(set(self.updated_author_record_ids) | set(self.updated_rated_by_record_ids))
+        return sorted(
+            set(self.updated_author_record_ids)
+            | set(self.updated_rated_by_record_ids)
+            | set(self.updated_secondary_rated_by_record_ids)
+        )
 
 
 def run_post_commit_record_metadata_sync(repo_root: Path) -> PostCommitRecordMetadataResult:
@@ -138,8 +147,14 @@ def run_post_commit_record_metadata_sync(repo_root: Path) -> PostCommitRecordMet
     repo = StorageRepo(repo_root)
     author_summary = sync_record_authors(repo, record_ids=touched_record_ids)
     rated_by_summary = sync_record_rated_by(repo, record_ids=touched_record_metadata_ids)
+    secondary_rated_by_summary = sync_record_secondary_rated_by(
+        repo,
+        record_ids=touched_record_metadata_ids,
+    )
     updated_record_ids = sorted(
-        set(author_summary.updated_record_ids) | set(rated_by_summary.updated_record_ids)
+        set(author_summary.updated_record_ids)
+        | set(rated_by_summary.updated_record_ids)
+        | set(secondary_rated_by_summary.updated_record_ids)
     )
     if updated_record_ids:
         updated_paths = [
@@ -155,6 +170,7 @@ def run_post_commit_record_metadata_sync(repo_root: Path) -> PostCommitRecordMet
         touched_record_metadata_ids=touched_record_metadata_ids,
         updated_author_record_ids=list(author_summary.updated_record_ids),
         updated_rated_by_record_ids=list(rated_by_summary.updated_record_ids),
+        updated_secondary_rated_by_record_ids=list(secondary_rated_by_summary.updated_record_ids),
     )
 
 
@@ -212,6 +228,11 @@ def main(argv: list[str] | None = None) -> int:
             if result.updated_rated_by_record_ids:
                 detail_parts.append(
                     "rated_by=" + ", ".join(result.updated_rated_by_record_ids[:10])
+                )
+            if result.updated_secondary_rated_by_record_ids:
+                detail_parts.append(
+                    "secondary_rated_by="
+                    + ", ".join(result.updated_secondary_rated_by_record_ids[:10])
                 )
             print("Synced record metadata for latest commit: " + "; ".join(detail_parts))
         return 0
