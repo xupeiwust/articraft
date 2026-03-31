@@ -27,6 +27,12 @@ const JOINT_POSE_QUERY_PARAM = "pose";
 const INSPECTOR_QUERY_PARAM = "inspector";
 const JOINT_POSE_PRECISION = 1e5;
 const PREVIEW_UI_SYNC_MS = 100;
+const PREVIEW_MIN_CYCLE_SECONDS = 2.6;
+const PREVIEW_LINEAR_SPEED_MPS = 0.08;
+const PREVIEW_ANGULAR_SPEED_RAD_PER_SECOND = Math.PI / 4;
+const PREVIEW_CONTINUOUS_ANGULAR_SPEED_RAD_PER_SECOND = Math.PI / 5;
+const PREVIEW_FALLBACK_PRISMATIC_TRAVEL_METERS = 0.24;
+const PREVIEW_FALLBACK_REVOLUTE_TRAVEL_RADIANS = (Math.PI * 2) / 3;
 
 type JointPoseSnapshot = {
   recordId: string;
@@ -38,6 +44,12 @@ type CollisionSupportState = {
   summary: string;
   detail: string;
   compileCommand: string | null;
+};
+
+type PreviewJointMotion = {
+  joint: UrdfJoint;
+  cycleSeconds: number;
+  phaseOffset: number;
 };
 
 function readInspectorCollapsedFromUrl(): boolean {
@@ -187,6 +199,60 @@ function buildPreviewJointSequence(urdfSpec: UrdfSpec): UrdfJoint[] {
   return orderedJoints;
 }
 
+function previewJointTravelSpan(joint: UrdfJoint): number {
+  if (joint.type === "continuous") {
+    return Math.PI * 2;
+  }
+
+  const lower = joint.limit?.lower;
+  const upper = joint.limit?.upper;
+  const hasRange =
+    typeof lower === "number"
+    && Number.isFinite(lower)
+    && typeof upper === "number"
+    && Number.isFinite(upper)
+    && upper > lower;
+
+  if (hasRange) {
+    return upper - lower;
+  }
+
+  if (joint.type === "prismatic") {
+    return PREVIEW_FALLBACK_PRISMATIC_TRAVEL_METERS;
+  }
+
+  return PREVIEW_FALLBACK_REVOLUTE_TRAVEL_RADIANS;
+}
+
+function previewJointCycleSeconds(joint: UrdfJoint): number {
+  const span = previewJointTravelSpan(joint);
+
+  if (joint.type === "continuous") {
+    return span / PREVIEW_CONTINUOUS_ANGULAR_SPEED_RAD_PER_SECOND;
+  }
+
+  const speed =
+    joint.type === "prismatic" ? PREVIEW_LINEAR_SPEED_MPS : PREVIEW_ANGULAR_SPEED_RAD_PER_SECOND;
+  return Math.max(PREVIEW_MIN_CYCLE_SECONDS, (span * 2) / speed);
+}
+
+function previewJointPhaseOffset(jointName: string, index: number): number {
+  let hash = 0;
+  for (const character of jointName) {
+    hash = (hash * 33 + character.charCodeAt(0)) % 4096;
+  }
+
+  return THREE.MathUtils.euclideanModulo((hash / 4096) + (index * 0.61803398875), 1);
+}
+
+function buildPreviewJointMotions(urdfSpec: UrdfSpec): PreviewJointMotion[] {
+  return buildPreviewJointSequence(urdfSpec).map((joint, index) => ({
+    joint,
+    cycleSeconds: previewJointCycleSeconds(joint),
+    phaseOffset: previewJointPhaseOffset(joint.name, index),
+  }));
+}
+
 function previewJointValue(joint: UrdfJoint, phase: number): number {
   if (joint.type === "continuous") {
     return THREE.MathUtils.euclideanModulo((phase * Math.PI * 2) + Math.PI, Math.PI * 2) - Math.PI;
@@ -308,26 +374,24 @@ export default function ViewerShell(): JSX.Element {
       return;
     }
 
-    const previewJoints = buildPreviewJointSequence(urdfSpec);
-    if (previewJoints.length === 0) {
+    const previewMotions = buildPreviewJointMotions(urdfSpec);
+    if (previewMotions.length === 0) {
       setPreviewJointValues(new Map());
       return;
     }
 
-    const secondsPerCycle = THREE.MathUtils.clamp(previewJoints.length * 0.9, 3.2, 10);
     let frameId = 0;
 
     const tick = (now: number) => {
       const elapsedSeconds = now / 1000;
-      const basePhase = (elapsedSeconds % secondsPerCycle) / secondsPerCycle;
       const nextValues = new Map<string, number>();
 
-      for (const [index, joint] of previewJoints.entries()) {
+      for (const motion of previewMotions) {
         const jointPhase = THREE.MathUtils.euclideanModulo(
-          basePhase - index / previewJoints.length,
+          (elapsedSeconds / motion.cycleSeconds) + motion.phaseOffset,
           1,
         );
-        nextValues.set(joint.name, previewJointValue(joint, jointPhase));
+        nextValues.set(motion.joint.name, previewJointValue(motion.joint, jointPhase));
       }
 
       previewJointValuesRef.current = nextValues;
