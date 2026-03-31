@@ -986,6 +986,7 @@ def _write_success_record(
         ],
         checks_run=["compile_urdf"],
         metrics={
+            "compile_level": "full",
             "turn_count": turn_count,
             "tool_call_count": tool_call_count,
             "compile_attempt_count": compile_attempt_count,

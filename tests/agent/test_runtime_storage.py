@@ -167,6 +167,10 @@ def test_workbench_run_and_rerun_persist_runtime_artifacts(
         encoding="utf-8"
     ) == "<robot name='test'/>"
     assert (materialization_dir / "compile_report.json").exists()
+    compile_report = json.loads(
+        (materialization_dir / "compile_report.json").read_text(encoding="utf-8")
+    )
+    assert compile_report["metrics"]["compile_level"] == "full"
     assert not (materialization_dir / "assets" / "meshes").exists()
 
     workbench_path = repo_root / "data" / "local" / "workbench.json"
@@ -592,6 +596,10 @@ def test_workbench_run_succeeds_when_persisted_input_image_disappears(
     assert (record_dir / "record.json").exists()
     assert (record_dir / "provenance.json").exists()
     assert (materialization_dir / "compile_report.json").exists()
+    compile_report = json.loads(
+        (materialization_dir / "compile_report.json").read_text(encoding="utf-8")
+    )
+    assert compile_report["metrics"]["compile_level"] == "full"
     assert list((record_dir / "inputs").iterdir()) == []
 
     run_dir = next((repo_root / "data" / "cache" / "runs").iterdir())
