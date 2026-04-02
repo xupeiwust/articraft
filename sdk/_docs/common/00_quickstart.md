@@ -107,10 +107,6 @@ def run_tests() -> TestReport:
     hinge = object_model.get_articulation("base_to_lid")
 
     ctx.check_model_valid()
-    ctx.check_mesh_assets_ready()
-    ctx.fail_if_isolated_parts()
-    ctx.warn_if_part_contains_disconnected_geometry_islands()
-    ctx.fail_if_parts_overlap_in_current_pose()
 
     with ctx.pose({hinge: 0.0}):
         ctx.expect_gap(lid, base, axis="z", max_gap=0.001, max_penetration=0.0)
@@ -127,17 +123,15 @@ frame coincides with the articulation frame at the left edge of the lid. Since
 the closed lid panel extends along local `+X` from that hinge, `axis=(0, -1, 0)`
 makes positive angles open upward.
 
-`ctx.fail_if_isolated_parts()` also catches floating multi-part groups that are
-internally connected to each other but disconnected from the rooted body.
-
 ## Recommended Workflow
 
 1. Build parts with `model.part(...)`.
 2. Add visuals with `part.visual(...)`.
 3. Add inertials when needed with `Inertial.from_geometry(...)`.
 4. Add motion with `model.articulation(...)`.
-5. Keep `run_tests()` focused on the default QC stack plus prompt-specific
-   `expect_*` assertions.
+5. Add prompt-specific `expect_*` assertions in `run_tests()`.
+6. Pull the default QC scaffold from `80_testing.md` when starting a new test
+   block.
 
 ## See Also
 

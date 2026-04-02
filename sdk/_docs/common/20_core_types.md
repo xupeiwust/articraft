@@ -280,15 +280,9 @@ Articulation(
 - `origin`: transform from the parent part frame into the articulation frame.
 - `axis`: motion axis for revolute, continuous, and prismatic joints,
   expressed in the articulation frame.
-- At `q=0`, the child part frame is coincident with the articulation frame.
-- Positive `REVOLUTE` and `CONTINUOUS` motion follows the right-hand rule
-  around `axis`. Positive `PRISMATIC` motion translates the child along `axis`.
 - `origin.rpy` rotates the articulation frame relative to the parent, so it
   also rotates the meaning of `axis`.
-- If increasing joint position moves a lid, door, or flap into the parent
-  instead of outward, negate `axis`.
-- `motion_limits`: required for `REVOLUTE`, `PRISMATIC`, and `CONTINUOUS` with
-  the usual constraints described in `30_articulated_object.md`.
+- Direction conventions and joint-limit rules live in `30_articulated_object.md`.
 
 For authored models, prefer `model.articulation(...)` rather than constructing
 `Articulation` objects manually.

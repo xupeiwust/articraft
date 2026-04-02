@@ -245,21 +245,6 @@ Returns baked `MeshGeometry`.
 
 ## Advice
 
-### Choosing rigid placement vs wrapping
-
-- Use `place_on_surface(...)` when the child should remain rigid, such as a
-  button, foot, tab, or knob.
-- Use `wrap_mesh_onto_surface(...)` or `wrap_profile_onto_surface(...)` when
-  the geometry must follow curvature across its area, such as a label, plaque,
-  or thin trim piece.
-
-### Choosing `place_on_surface(...)` vs `place_on_face(...)`
-
-- Use `place_on_face(...)` only when the parent is truly box-like and the face
-  itself is the semantic reference.
-- Use `place_on_surface(...)` when the target surface is the source of truth,
-  including curved or mesh-backed targets.
-
 ### Understanding wrapping controls
 
 - `child_axis` says which local axis is the visible outward-facing direction.
