@@ -7,7 +7,7 @@ from typing import Optional
 from rich.console import Console
 from rich.text import Text
 
-from agent.tui.formatters import format_cost, format_duration, truncate_text
+from agent.tui.formatters import format_cost, format_duration, format_tokens, truncate_text
 
 
 class BatchRunDisplay:
@@ -204,6 +204,42 @@ class BatchRunDisplay:
             label_style="bold white",
             message_style="dim",
         )
+
+    def add_compaction_event(
+        self,
+        slug: str,
+        *,
+        trigger: str,
+        estimated_saved_next_input_tokens: int | None,
+        billed_cost: float | None,
+        previous_response_id_cleared: bool,
+        estimate_error: str | None = None,
+    ) -> None:
+        if not self.enabled:
+            return
+        line = Text()
+        line.append("  compact ", style="bold magenta")
+        line.append(f"[{self._run_label(slug)}] ", style="bold black on magenta")
+        line.append(truncate_text(slug, 40), style="bold")
+        line.append("  ", style="")
+        line.append(trigger.replace("_", " "), style="bold")
+        if estimated_saved_next_input_tokens is not None:
+            line.append("  saved≈", style="dim")
+            line.append(format_tokens(estimated_saved_next_input_tokens), style="bold blue")
+        else:
+            line.append("  saved=", style="dim")
+            line.append("?", style="yellow")
+        line.append("  billed=", style="dim")
+        line.append(format_cost(billed_cost or 0.0), style="green")
+        line.append("  prev=", style="dim")
+        line.append(
+            "cleared" if previous_response_id_cleared else "kept",
+            style="bold green" if previous_response_id_cleared else "bold yellow",
+        )
+        self.console.print(line)
+
+        if estimate_error:
+            self._print_indented_block(f"estimate: {estimate_error}", style="yellow")
 
     def stop(self):
         if not self.enabled:

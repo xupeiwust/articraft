@@ -283,6 +283,7 @@ class ArticraftAgent:
         trace_dir: Optional[str] = None,
         display_enabled: Optional[bool] = None,
         on_turn_start: Optional[Callable[[int], None]] = None,
+        on_compaction_event: Optional[Callable[[dict[str, Any], float], None]] = None,
         checkpoint_urdf_path: Optional[Path] = None,
         sdk_package: str = "sdk",
         scaffold_mode: str = "lite",
@@ -356,6 +357,7 @@ class ArticraftAgent:
             runtime_limits=self.runtime_limits,
         )
         self.on_turn_start = on_turn_start
+        self.on_compaction_event = on_compaction_event
 
         if display_enabled is None:
             display_enabled = os.environ.get("URDF_TUI_ENABLED", "1") != "0"
@@ -1212,7 +1214,40 @@ class ArticraftAgent:
                                 self.trace_writer.write_event(event_type, payload)
                     compaction_event = getattr(prepare_result, "compaction_event", None)
                     if compaction_event is not None and self.cost_tracker:
-                        self.cost_tracker.add_maintenance_event(compaction_event.to_dict())
+                        compaction_payload = compaction_event.to_dict()
+                        maintenance_cost = self.cost_tracker.add_maintenance_event(
+                            compaction_payload
+                        )
+                        usage = compaction_payload.get("usage")
+                        usage_total_tokens = (
+                            usage.get("total_tokens")
+                            if isinstance(usage, dict)
+                            and isinstance(usage.get("total_tokens"), int)
+                            else None
+                        )
+                        add_compaction_event = getattr(self.display, "add_compaction_event", None)
+                        if callable(add_compaction_event):
+                            add_compaction_event(
+                                trigger=compaction_event.trigger,
+                                estimated_saved_next_input_tokens=(
+                                    compaction_event.estimated_saved_next_input_tokens
+                                ),
+                                billed_cost=maintenance_cost.total_cost,
+                                previous_response_id_cleared=(
+                                    compaction_event.previous_response_id_cleared
+                                ),
+                                usage_total_tokens=usage_total_tokens,
+                                estimate_error=compaction_event.estimate_error,
+                            )
+                        on_compaction_event = getattr(self, "on_compaction_event", None)
+                        if on_compaction_event:
+                            try:
+                                on_compaction_event(
+                                    compaction_payload,
+                                    maintenance_cost.total_cost,
+                                )
+                            except Exception:
+                                logger.exception("on_compaction_event callback failed")
                         if (
                             self.max_cost_usd is not None
                             and self._current_total_cost_usd() > self.max_cost_usd

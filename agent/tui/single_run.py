@@ -274,6 +274,48 @@ class SingleRunDisplay:
         self.console.print(line)
         self._print_indented_block(cleaned, style="magenta")
 
+    def add_compaction_event(
+        self,
+        *,
+        trigger: str,
+        estimated_saved_next_input_tokens: int | None,
+        billed_cost: float | None,
+        previous_response_id_cleared: bool,
+        usage_total_tokens: int | None = None,
+        estimate_error: str | None = None,
+    ) -> None:
+        if not self.enabled:
+            return
+
+        if billed_cost and billed_cost > 0:
+            self.total_cost += billed_cost
+        if usage_total_tokens and usage_total_tokens > 0:
+            self.total_tokens += usage_total_tokens
+
+        line = Text()
+        line.append("  compact ", style="magenta")
+        line.append(trigger.replace("_", " "), style="bold")
+        if estimated_saved_next_input_tokens is not None:
+            line.append("  saved≈", style="dim")
+            line.append(format_tokens(estimated_saved_next_input_tokens), style="bold blue")
+        else:
+            line.append("  saved=", style="dim")
+            line.append("?", style="yellow")
+        line.append("  billed=", style="dim")
+        line.append(format_cost(billed_cost or 0.0), style="green")
+        line.append("  prev=", style="dim")
+        line.append(
+            "cleared" if previous_response_id_cleared else "kept",
+            style="bold green" if previous_response_id_cleared else "bold yellow",
+        )
+        self.console.print(line)
+
+        if estimate_error:
+            note = Text()
+            note.append("            ", style="dim")
+            note.append(truncate_text(f"estimate: {estimate_error}", 80), style="yellow")
+            self.console.print(note)
+
     def add_tool_call(
         self,
         tool_name: str,

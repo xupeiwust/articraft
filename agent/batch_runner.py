@@ -1199,7 +1199,9 @@ def _read_total_cost(run_dir: Path | None) -> float:
         payload = json.loads(cost_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return 0.0
-    total = payload.get("total") if isinstance(payload, dict) else None
+    total = payload.get("all_in_total") if isinstance(payload, dict) else None
+    if not isinstance(total, dict):
+        total = payload.get("total") if isinstance(payload, dict) else None
     costs_usd = total.get("costs_usd") if isinstance(total, dict) else None
     amount = costs_usd.get("total") if isinstance(costs_usd, dict) else None
     return float(amount) if isinstance(amount, (int, float)) else 0.0
@@ -1390,6 +1392,22 @@ async def _run_batch_row(
         system_prompt_path=config.system_prompt_path,
         display_enabled=False,
         on_turn_start=lambda turn: display.update_run_progress(context.record_id, turn, 0.0),
+        on_compaction_event=lambda event, billed_cost: display.add_compaction_event(
+            context.record_id,
+            trigger=str(event.get("trigger") or "compaction"),
+            estimated_saved_next_input_tokens=(
+                event.get("estimated_saved_next_input_tokens")
+                if isinstance(event.get("estimated_saved_next_input_tokens"), int)
+                else None
+            ),
+            billed_cost=billed_cost,
+            previous_response_id_cleared=bool(event.get("previous_response_id_cleared")),
+            estimate_error=(
+                str(event.get("estimate_error"))
+                if isinstance(event.get("estimate_error"), str)
+                else None
+            ),
+        ),
         sdk_package=row.sdk_package,
         scaffold_mode=row.scaffold_mode,
         sdk_docs_mode=config.sdk_docs_mode,

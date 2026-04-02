@@ -8,6 +8,9 @@ import remarkGfm from "remark-gfm";
 
 import { Badge } from "@/components/ui/badge";
 import {
+  type EnrichedCompactionEvent,
+  type EnrichedGenericTraceEvent,
+  type EnrichedTraceEvent,
   type EnrichedTraceTurn,
   type EnrichedTraceMessage,
   type EnrichedToolCall,
@@ -348,6 +351,23 @@ function PlainBlock({
     >
       {text}
     </pre>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}): JSX.Element {
+  return (
+    <div className="space-y-0.5 rounded-md bg-[var(--surface-2)] px-2.5 py-2">
+      <p className="text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--text-quaternary)]">
+        {label}
+      </p>
+      <p className="break-words font-mono text-[10px] text-[var(--text-secondary)]">{value}</p>
+    </div>
   );
 }
 
@@ -932,7 +952,81 @@ function UserEvent({ event }: { event: EnrichedTraceMessage }): JSX.Element {
   );
 }
 
-function EventRow({ event }: { event: EnrichedTraceMessage }): JSX.Element {
+function CompactionEvent({ event }: { event: EnrichedCompactionEvent }): JSX.Element {
+  return (
+    <div className="min-w-0 space-y-2 rounded-md border border-[var(--border-default)] bg-[var(--surface-1)] p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-[11px] text-[var(--text-tertiary)]">
+          <code className="rounded bg-[var(--surface-2)] px-1 py-0.5 font-mono text-[10px] text-[var(--text-secondary)]">
+            {event.eventType}
+          </code>
+        </p>
+        {event.trigger ? <Badge variant="warning">{event.trigger.replaceAll("_", " ")}</Badge> : null}
+        {event.estimatedSavedNextInputTokens != null ? (
+          <Badge variant="secondary">
+            {formatCount(event.estimatedSavedNextInputTokens)} tok saved
+          </Badge>
+        ) : null}
+        {event.billedCostUsd != null ? (
+          <Badge variant="success">{formatUsd(event.billedCostUsd)}</Badge>
+        ) : null}
+        <Badge variant={event.previousResponseIdCleared ? "success" : "secondary"}>
+          {event.previousResponseIdCleared
+            ? "previous_response_id cleared"
+            : "previous_response_id kept"}
+        </Badge>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <DetailRow label="Trigger" value={event.trigger ?? "--"} />
+        <DetailRow
+          label="Tokens Saved Estimate"
+          value={
+            event.estimatedSavedNextInputTokens != null
+              ? formatCount(event.estimatedSavedNextInputTokens)
+              : "--"
+          }
+        />
+        <DetailRow label="Billed Cost" value={formatUsd(event.billedCostUsd)} />
+        <DetailRow
+          label="Previous Response ID"
+          value={event.previousResponseIdCleared ? "cleared" : "kept"}
+        />
+      </div>
+
+      {event.estimateError ? (
+        <p className="text-[10px] leading-relaxed text-[var(--warning)]">
+          Saved-token estimate unavailable: {event.estimateError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function GenericTraceEvent({ event }: { event: EnrichedGenericTraceEvent }): JSX.Element {
+  const prettyJson = tryPrettyJson(JSON.stringify(event.raw));
+  return (
+    <div className="min-w-0 space-y-1.5 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-[11px] text-[var(--text-tertiary)]">
+          <code className="rounded bg-[var(--surface-2)] px-1 py-0.5 font-mono text-[10px] text-[var(--text-secondary)]">
+            {event.eventType}
+          </code>
+        </p>
+        <Badge variant="secondary">{event.title}</Badge>
+      </div>
+      {prettyJson ? (
+        <CodeBlock code={prettyJson} maxHeight="max-h-80" />
+      ) : (
+        <PlainBlock text={JSON.stringify(event.raw, null, 2)} maxHeight="max-h-80" />
+      )}
+    </div>
+  );
+}
+
+function EventRow({ event }: { event: EnrichedTraceEvent }): JSX.Element {
+  if (event.kind === "compaction") return <CompactionEvent event={event} />;
+  if (event.kind === "event") return <GenericTraceEvent event={event} />;
   if (event.role === "assistant") return <AssistantEvent event={event} />;
   if (event.role === "tool") return <ToolEvent event={event} />;
   return <UserEvent event={event} />;
@@ -955,15 +1049,24 @@ export function TrajectoryTurnCard({ turn, baseTimestamp }: TrajectoryTurnCardPr
   const eventUsage = turn.events.reduce(
     (acc, ev) => {
       if (ev.usage?.total_tokens) acc.total += ev.usage.total_tokens;
+      if (ev.kind === "compaction" && ev.billedCostUsd != null) {
+        acc.billedCost += ev.billedCostUsd;
+      }
       return acc;
     },
-    { total: 0 },
+    { total: 0, billedCost: 0 },
   );
   const tokenDisplay =
     asNumber(turnTokens?.total_tokens) != null
       ? formatCount(turnTokens?.total_tokens)
       : eventUsage.total > 0
         ? formatCount(eventUsage.total)
+        : null;
+  const costDisplay =
+    asNumber(turnCosts?.total) != null
+      ? formatUsd(turnCosts?.total)
+      : eventUsage.billedCost > 0
+        ? formatUsd(eventUsage.billedCost)
         : null;
 
   return (
@@ -973,7 +1076,7 @@ export function TrajectoryTurnCard({ turn, baseTimestamp }: TrajectoryTurnCardPr
         <span className="font-mono text-[11px] font-medium text-[var(--text-primary)]">
           Turn {turn.index}
         </span>
-        <Badge variant="success">{formatUsd(turnCosts?.total)}</Badge>
+        {costDisplay ? <Badge variant="success">{costDisplay}</Badge> : null}
         {tokenDisplay ? <Badge variant="secondary">{tokenDisplay} tok</Badge> : null}
         {relTime ? (
           <span className="font-mono text-[10px] text-[var(--text-quaternary)]">{relTime}</span>

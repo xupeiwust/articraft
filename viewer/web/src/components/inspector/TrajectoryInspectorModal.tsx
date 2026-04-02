@@ -15,6 +15,7 @@ import {
   asRecord,
   formatUsd,
   formatCount,
+  overallTraceTotals,
 } from "./trajectory-types";
 
 type TrajectoryInspectorModalProps = {
@@ -35,11 +36,11 @@ export function TrajectoryInspectorModal({
     [open, traceText, cost],
   );
 
-  const total = asRecord(cost?.total);
+  const total = overallTraceTotals(cost);
   const totalTokens = asRecord(total?.tokens);
   const totalCosts = asRecord(total?.costs_usd);
   const modelId = typeof cost?.model_id === "string" ? cost.model_id : null;
-  const baseTimestamp = turns.length > 0 ? turns[0].timestamp : null;
+  const baseTimestamp = turns.find((turn) => turn.timestamp != null)?.timestamp ?? null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -49,7 +50,7 @@ export function TrajectoryInspectorModal({
           <DialogHeader className="min-w-0 gap-2">
             <DialogTitle className="text-sm">Trajectory Inspector</DialogTitle>
             <DialogDescription className="sr-only">
-              Full agent trajectory with thought summaries, tool calls, and results.
+              Full agent trajectory with thought summaries, tool calls, runtime events, and results.
             </DialogDescription>
             <div className="flex flex-wrap items-center gap-2">
               {modelId ? (

@@ -1,5 +1,12 @@
-// Enriched trajectory types and parser — preserves fields that the sidebar
-// `parseTurns` discards (thought_summary, tool-call arguments, timestamps, usage).
+// Enriched trajectory types and parser — preserves fields that the inspector
+// needs from both message rows and runtime trace events.
+
+export type TraceUsage = {
+  prompt_tokens?: number;
+  candidates_tokens?: number;
+  total_tokens?: number;
+  cached_tokens?: number;
+};
 
 export type EnrichedToolCall = {
   id?: string;
@@ -9,31 +16,60 @@ export type EnrichedToolCall = {
 };
 
 export type EnrichedTraceMessage = {
+  kind: "message";
+  eventType: "message";
   role: string;
   content?: unknown;
   thought_summary?: string;
   tool_calls?: EnrichedToolCall[];
-  usage?: {
-    prompt_tokens?: number;
-    candidates_tokens?: number;
-    total_tokens?: number;
-    cached_tokens?: number;
-  };
+  usage?: TraceUsage;
   name?: string;
   tool_call_id?: string;
   tool_type?: string;
   timestamp?: number;
 };
 
+export type EnrichedCompactionEvent = {
+  kind: "compaction";
+  eventType: string;
+  trigger?: string;
+  modelId?: string;
+  usage?: TraceUsage;
+  beforeNextInputTokens?: number | null;
+  afterNextInputTokens?: number | null;
+  estimatedSavedNextInputTokens?: number | null;
+  beforeItemCount?: number | null;
+  afterItemCount?: number | null;
+  previousResponseIdCleared?: boolean;
+  estimateError?: string;
+  billedCostUsd?: number | null;
+  timestamp?: number;
+  raw: Record<string, unknown>;
+};
+
+export type EnrichedGenericTraceEvent = {
+  kind: "event";
+  eventType: string;
+  title: string;
+  usage?: TraceUsage;
+  timestamp?: number;
+  raw: Record<string, unknown>;
+};
+
+export type EnrichedTraceEvent =
+  | EnrichedTraceMessage
+  | EnrichedCompactionEvent
+  | EnrichedGenericTraceEvent;
+
 export type EnrichedTraceTurn = {
   index: number;
   cost: Record<string, unknown> | null;
-  events: EnrichedTraceMessage[];
+  events: EnrichedTraceEvent[];
   timestamp: number | null;
 };
 
 // ---------------------------------------------------------------------------
-// Shared utilities (extracted from TracePanel to avoid duplication)
+// Shared utilities
 // ---------------------------------------------------------------------------
 
 export function asRecord(value: unknown): Record<string, unknown> | null {
@@ -44,6 +80,10 @@ export function asRecord(value: unknown): Record<string, unknown> | null {
 
 export function asNumber(value: unknown): number | null {
   return typeof value === "number" ? value : null;
+}
+
+export function asString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
 export function formatUsd(value: unknown): string {
@@ -113,6 +153,140 @@ export function fullMessageText(content: unknown): string {
   return String(content);
 }
 
+export function overallTraceTotals(cost: Record<string, unknown> | null): Record<string, unknown> | null {
+  return asRecord(cost?.all_in_total) ?? asRecord(cost?.total);
+}
+
+function asUsage(value: unknown): TraceUsage | undefined {
+  const record = asRecord(value);
+  if (!record) return undefined;
+  return {
+    prompt_tokens: asNumber(record.prompt_tokens) ?? undefined,
+    candidates_tokens: asNumber(record.candidates_tokens) ?? undefined,
+    total_tokens: asNumber(record.total_tokens) ?? undefined,
+    cached_tokens: asNumber(record.cached_tokens) ?? undefined,
+  };
+}
+
+function titleCaseEventType(eventType: string): string {
+  return eventType
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function turnHasAssistant(turn: EnrichedTraceTurn): boolean {
+  return turn.events.some((event) => event.kind === "message" && event.role === "assistant");
+}
+
+function ensurePendingTurn(
+  turns: EnrichedTraceTurn[],
+  costTurns: unknown[],
+): EnrichedTraceTurn {
+  const lastTurn = turns[turns.length - 1];
+  if (lastTurn && !turnHasAssistant(lastTurn)) {
+    return lastTurn;
+  }
+  const nextTurn: EnrichedTraceTurn = {
+    index: turns.length + 1,
+    cost: asRecord(costTurns[turns.length]),
+    events: [],
+    timestamp: null,
+  };
+  turns.push(nextTurn);
+  return nextTurn;
+}
+
+function compactionMaintenanceEvents(cost: Record<string, unknown> | null): Record<string, unknown>[] {
+  if (!Array.isArray(cost?.maintenance_events)) return [];
+  return cost.maintenance_events
+    .map((event) => asRecord(event))
+    .filter((event): event is Record<string, unknown> => event !== null)
+    .filter((event) => {
+      const kind = asString(event.kind) ?? asString(event.type);
+      return kind === "compaction";
+    });
+}
+
+function isMatchingCompactionEvent(
+  traceEntry: Record<string, unknown>,
+  maintenanceEvent: Record<string, unknown>,
+): boolean {
+  const traceTurn = asNumber(traceEntry.turn_before_request);
+  const maintenanceTurn = asNumber(maintenanceEvent.turn_before_request);
+  if (traceTurn != null && maintenanceTurn != null && traceTurn !== maintenanceTurn) {
+    return false;
+  }
+
+  const traceTrigger = asString(traceEntry.trigger);
+  const maintenanceTrigger = asString(maintenanceEvent.trigger);
+  if (traceTrigger && maintenanceTrigger && traceTrigger !== maintenanceTrigger) {
+    return false;
+  }
+
+  return true;
+}
+
+function takeCompactionMaintenanceEvent(
+  traceEntry: Record<string, unknown>,
+  maintenanceEvents: Record<string, unknown>[],
+  startIndex: number,
+): { event: Record<string, unknown> | null; nextIndex: number } {
+  for (let index = startIndex; index < maintenanceEvents.length; index += 1) {
+    const candidate = maintenanceEvents[index];
+    if (isMatchingCompactionEvent(traceEntry, candidate)) {
+      return { event: candidate, nextIndex: index + 1 };
+    }
+  }
+  if (startIndex < maintenanceEvents.length) {
+    return { event: maintenanceEvents[startIndex], nextIndex: startIndex + 1 };
+  }
+  return { event: null, nextIndex: startIndex };
+}
+
+function parseNonMessageEvent(
+  entry: Record<string, unknown>,
+  maintenanceEvent: Record<string, unknown> | null,
+  timestamp: number | null,
+): EnrichedTraceEvent {
+  const eventType = asString(entry.type) ?? "event";
+  const usage = asUsage(entry.usage) ?? asUsage(maintenanceEvent?.tokens);
+
+  if (eventType === "compaction") {
+    const billedCosts = asRecord(maintenanceEvent?.costs_usd);
+    return {
+      kind: "compaction",
+      eventType,
+      trigger: asString(entry.trigger) ?? undefined,
+      modelId: asString(entry.model_id) ?? undefined,
+      usage,
+      beforeNextInputTokens: asNumber(entry.before_next_input_tokens),
+      afterNextInputTokens: asNumber(entry.after_next_input_tokens),
+      estimatedSavedNextInputTokens: asNumber(entry.estimated_saved_next_input_tokens),
+      beforeItemCount: asNumber(entry.before_item_count),
+      afterItemCount: asNumber(entry.after_item_count),
+      previousResponseIdCleared:
+        typeof entry.previous_response_id_cleared === "boolean"
+          ? entry.previous_response_id_cleared
+          : undefined,
+      estimateError: asString(entry.estimate_error) ?? undefined,
+      billedCostUsd: asNumber(billedCosts?.total),
+      timestamp: timestamp ?? undefined,
+      raw: entry,
+    };
+  }
+
+  return {
+    kind: "event",
+    eventType,
+    title: titleCaseEventType(eventType),
+    usage,
+    timestamp: timestamp ?? undefined,
+    raw: entry,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Enriched parser
 // ---------------------------------------------------------------------------
@@ -146,42 +320,76 @@ export function parseEnrichedTurns(
     .filter((entry): entry is Record<string, unknown> => entry !== null);
 
   const turns: EnrichedTraceTurn[] = [];
+  const maintenanceEvents = compactionMaintenanceEvents(cost);
+  let compactionMaintenanceIndex = 0;
 
   for (const entry of entries) {
+    const timestamp = asNumber(entry.ts);
     const message = asRecord(entry.message);
-    const role = typeof message?.role === "string" ? message.role : null;
-    if (!message || !role) continue;
+    const role = asString(message?.role);
 
-    const ts = typeof entry.ts === "number" ? entry.ts : null;
+    if (message && role) {
+      const traceMessage: EnrichedTraceMessage = {
+        kind: "message",
+        eventType: "message",
+        role,
+        content: message.content,
+        thought_summary: asString(message.thought_summary) ?? undefined,
+        tool_calls: Array.isArray(message.tool_calls)
+          ? (message.tool_calls as EnrichedToolCall[])
+          : undefined,
+        usage: asUsage(message.usage),
+        name: asString(message.name) ?? undefined,
+        tool_call_id: asString(message.tool_call_id) ?? undefined,
+        tool_type: asString(message.tool_type) ?? undefined,
+        timestamp: timestamp ?? undefined,
+      };
 
-    const traceMessage: EnrichedTraceMessage = {
-      role,
-      content: message.content,
-      thought_summary:
-        typeof message.thought_summary === "string" ? message.thought_summary : undefined,
-      tool_calls: Array.isArray(message.tool_calls)
-        ? (message.tool_calls as EnrichedToolCall[])
-        : undefined,
-      usage: asRecord(message.usage) as EnrichedTraceMessage["usage"] | undefined ?? undefined,
-      name: typeof message.name === "string" ? message.name : undefined,
-      tool_call_id:
-        typeof message.tool_call_id === "string" ? message.tool_call_id : undefined,
-      tool_type: typeof message.tool_type === "string" ? message.tool_type : undefined,
-      timestamp: ts ?? undefined,
-    };
+      if (role === "assistant") {
+        const pendingTurn = turns[turns.length - 1];
+        if (pendingTurn && !turnHasAssistant(pendingTurn)) {
+          pendingTurn.events.push(traceMessage);
+          if (pendingTurn.timestamp == null) {
+            pendingTurn.timestamp = timestamp;
+          }
+          continue;
+        }
 
-    if (role === "assistant") {
-      turns.push({
-        index: turns.length + 1,
-        cost: asRecord(costTurns[turns.length]),
-        events: [traceMessage],
-        timestamp: ts,
-      });
+        turns.push({
+          index: turns.length + 1,
+          cost: asRecord(costTurns[turns.length]),
+          events: [traceMessage],
+          timestamp,
+        });
+        continue;
+      }
+
+      if (turns.length === 0) continue;
+      turns[turns.length - 1].events.push(traceMessage);
       continue;
     }
 
-    if (turns.length === 0) continue;
-    turns[turns.length - 1].events.push(traceMessage);
+    const eventType = asString(entry.type);
+    if (!eventType || eventType === "message") {
+      continue;
+    }
+
+    let maintenanceEvent: Record<string, unknown> | null = null;
+    if (eventType === "compaction") {
+      const match = takeCompactionMaintenanceEvent(
+        entry,
+        maintenanceEvents,
+        compactionMaintenanceIndex,
+      );
+      maintenanceEvent = match.event;
+      compactionMaintenanceIndex = match.nextIndex;
+    }
+
+    const turn = ensurePendingTurn(turns, costTurns);
+    turn.events.push(parseNonMessageEvent(entry, maintenanceEvent, timestamp));
+    if (turn.timestamp == null) {
+      turn.timestamp = timestamp;
+    }
   }
 
   if (turns.length === 0) {

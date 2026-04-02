@@ -188,3 +188,24 @@ def test_add_tool_call_renders_compile_model_failure_details() -> None:
     assert "compile ✗" in output
     assert "Primary issue: compile execution failed." in output
     assert "[compile_runtime] ValueError: bad loft" in output
+
+
+def test_add_compaction_event_shows_saved_tokens_and_billed_cost_in_summary() -> None:
+    display, buffer = _make_display()
+
+    display.add_compaction_event(
+        trigger="hard_pressure",
+        estimated_saved_next_input_tokens=210_000,
+        billed_cost=0.00125,
+        previous_response_id_cleared=True,
+        usage_total_tokens=1_800,
+    )
+    display.stop()
+
+    output = buffer.getvalue()
+    assert "compact hard pressure" in output
+    assert "saved≈210.0K" in output
+    assert "billed=$0.001250" in output
+    assert "prev=cleared" in output
+    assert "1.8K tokens" in output
+    assert "$0.001250" in output

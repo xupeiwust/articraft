@@ -290,3 +290,19 @@ def test_overall_batch_status_marks_missing_or_failed_rows_as_failed() -> None:
         )
         == "failed"
     )
+
+
+def test_read_total_cost_prefers_all_in_total(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run_artifacts"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "cost.json").write_text(
+        """
+        {
+          "total": {"costs_usd": {"total": 0.75}},
+          "all_in_total": {"costs_usd": {"total": 0.91}}
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    assert batch_runner._read_total_cost(run_dir) == pytest.approx(0.91)

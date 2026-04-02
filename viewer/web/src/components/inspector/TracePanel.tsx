@@ -6,6 +6,8 @@ import {
   asRecord,
   formatUsd,
   formatCount,
+  overallTraceTotals,
+  parseEnrichedTurns,
 } from "./trajectory-types";
 
 type TracePanelProps = {
@@ -13,33 +15,11 @@ type TracePanelProps = {
   traceText: string | null;
 };
 
-function countTurns(traceText: string | null, cost: Record<string, unknown> | null): number {
-  const costTurns = Array.isArray(cost?.turns) ? cost.turns.length : 0;
-  if (!traceText) return costTurns;
-
-  let count = 0;
-  for (const line of traceText.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    try {
-      const entry = JSON.parse(trimmed) as Record<string, unknown>;
-      const message = typeof entry.message === "object" && entry.message !== null
-        ? (entry.message as Record<string, unknown>)
-        : null;
-      if (message?.role === "assistant") count++;
-    } catch {
-      // skip malformed lines
-    }
-  }
-
-  return count || costTurns;
-}
-
 export function TracePanel({ cost, traceText }: TracePanelProps): JSX.Element | null {
-  const total = asRecord(cost?.total);
+  const total = overallTraceTotals(cost);
   const totalTokens = asRecord(total?.tokens);
   const totalCosts = asRecord(total?.costs_usd);
-  const turnCount = useMemo(() => countTurns(traceText, cost), [traceText, cost]);
+  const turnCount = useMemo(() => parseEnrichedTurns(traceText, cost).length, [traceText, cost]);
   const modelId = typeof cost?.model_id === "string" ? cost.model_id : null;
   const [inspectorOpen, setInspectorOpen] = useState(false);
 
