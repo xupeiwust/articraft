@@ -451,6 +451,11 @@ class ArticulatedObject:
             raise ValidationError(
                 "Articulated object has no root part (cycle or every part is a child)"
             )
+        if len(roots) > 1:
+            raise ValidationError(
+                "Articulated object must have exactly one root part; "
+                f"found multiple root parts: {roots}"
+            )
 
         visited: set[str] = set()
         queue: List[str] = list(roots)

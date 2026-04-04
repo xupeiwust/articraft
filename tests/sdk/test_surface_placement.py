@@ -21,6 +21,7 @@ from sdk import (
     align_centers,
     mesh_from_geometry,
     part_local_aabb,
+    place_on_face,
     place_on_surface,
     sample_catmull_rom_spline_2d,
     surface_frame,
@@ -135,6 +136,34 @@ def test_place_on_surface_mounts_centered_child_flush_to_sphere() -> None:
     _assert_vec_close(origin.xyz, (1.002, 0.0, 0.0))
     rotated = _rotate(_rpy_matrix(origin), (0.0, 0.0, 1.0))
     _assert_vec_close(rotated, (1.0, 0.0, 0.0))
+
+
+@pytest.mark.parametrize(
+    ("face", "expected_x", "expected_y", "expected_z"),
+    [
+        ("+x", (0.0, 0.0, -1.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0)),
+        ("-x", (0.0, 0.0, 1.0), (0.0, 1.0, 0.0), (-1.0, 0.0, 0.0)),
+        ("+y", (1.0, 0.0, 0.0), (0.0, 0.0, -1.0), (0.0, 1.0, 0.0)),
+        ("-y", (1.0, 0.0, 0.0), (0.0, 0.0, 1.0), (0.0, -1.0, 0.0)),
+        ("+z", (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
+        ("-z", (1.0, 0.0, 0.0), (0.0, -1.0, 0.0), (0.0, 0.0, -1.0)),
+    ],
+)
+def test_place_on_face_uses_documented_face_basis(
+    face: str,
+    expected_x: tuple[float, float, float],
+    expected_y: tuple[float, float, float],
+    expected_z: tuple[float, float, float],
+) -> None:
+    parent = Part("parent")
+    parent.visual(Box((2.0, 4.0, 6.0)))
+
+    origin = place_on_face(parent, face, prefer_collisions=False)
+    rot = _rpy_matrix(origin)
+
+    _assert_vec_close(_rotate(rot, (1.0, 0.0, 0.0)), expected_x)
+    _assert_vec_close(_rotate(rot, (0.0, 1.0, 0.0)), expected_y)
+    _assert_vec_close(_rotate(rot, (0.0, 0.0, 1.0)), expected_z)
 
 
 def test_align_centers_respects_selected_axes() -> None:

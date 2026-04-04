@@ -804,10 +804,16 @@ def compute_part_world_transforms(
         raise ValidationError(
             "Articulated object has no root part (cycle or every part is a child)"
         )
+    if len(roots) > 1:
+        raise ValidationError(
+            "Articulated object must have exactly one root part for world-frame "
+            f"computations; found multiple root parts: {roots}"
+        )
 
-    world: Dict[str, Mat4] = {root: _identity4() for root in roots}
+    root = roots[0]
+    world: Dict[str, Mat4] = {root: _identity4()}
     visited: set[str] = set()
-    queue: List[str] = list(roots)
+    queue: List[str] = [root]
 
     while queue:
         parent_link = queue.pop(0)

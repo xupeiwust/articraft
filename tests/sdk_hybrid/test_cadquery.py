@@ -60,6 +60,27 @@ def test_mesh_components_from_cadquery_preserves_assembly_locations(tmp_path) ->
     assert meshes[1].filename == "assets/meshes/assembly__component_002.obj"
 
 
+def test_export_cadquery_components_scales_assembly_locations_with_unit_scale(tmp_path) -> None:
+    assets = AssetContext(tmp_path)
+    assembly = cq.Assembly(name="root")
+    box = cq.Workplane("XY").box(10.0, 10.0, 10.0)
+    assembly.add(box, name="left", loc=cq.Location(cq.Vector(-20.0, 0.0, 0.0)))
+    assembly.add(box, name="right", loc=cq.Location(cq.Vector(20.0, 0.0, 0.0)))
+
+    exports = export_cadquery_components(
+        assembly,
+        "assembly_scaled.obj",
+        assets=assets,
+        unit_scale=0.001,
+    )
+
+    assert len(exports) == 2
+    assert exports[0].local_aabb[0] == pytest.approx((-0.025, -0.005, -0.005))
+    assert exports[0].local_aabb[1] == pytest.approx((-0.015, 0.005, 0.005))
+    assert exports[1].local_aabb[0] == pytest.approx((0.015, -0.005, -0.005))
+    assert exports[1].local_aabb[1] == pytest.approx((0.025, 0.005, 0.005))
+
+
 def test_mesh_from_cadquery_still_triggers_disconnected_geometry_warning_for_multi_solid_shape(
     tmp_path,
 ) -> None:

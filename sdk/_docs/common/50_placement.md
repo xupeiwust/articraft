@@ -83,6 +83,18 @@ place_on_face(
 - `proud`: offset outward from the chosen face normal.
 - Returns a rigid `Origin`.
 
+`face_pos` is expressed in parent-face tangent coordinates, while the returned
+child frame uses a deterministic right-handed basis per face:
+
+| Face | `face_pos` axes | Child `+X` | Child `+Y` | Child `+Z` |
+| --- | --- | --- | --- | --- |
+| `+x` | `(parent +Y, parent +Z)` | `parent -Z` | `parent +Y` | `parent +X` |
+| `-x` | `(parent +Y, parent +Z)` | `parent +Z` | `parent +Y` | `parent -X` |
+| `+y` | `(parent +X, parent +Z)` | `parent +X` | `parent -Z` | `parent +Y` |
+| `-y` | `(parent +X, parent +Z)` | `parent +X` | `parent +Z` | `parent -Y` |
+| `+z` | `(parent +X, parent +Y)` | `parent +X` | `parent +Y` | `parent +Z` |
+| `-z` | `(parent +X, parent +Y)` | `parent +X` | `parent -Y` | `parent -Z` |
+
 ### `place_on_face_uv(...)`
 
 ```python
@@ -100,6 +112,7 @@ place_on_face_uv(
 
 - `uv`: normalized face coordinates in `[0, 1]`.
 - `uv_margin`: inward margin, either one float or per-axis pair.
+- `uv` follows the same face tangent axes as `face_pos`.
 - Returns a rigid `Origin`.
 
 ### `proud_for_flush_mount(...)`

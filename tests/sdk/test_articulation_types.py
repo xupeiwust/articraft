@@ -79,6 +79,15 @@ def test_floating_forbids_motion_limits() -> None:
         model.validate(strict=True)
 
 
+def test_strict_validation_rejects_multiple_root_parts() -> None:
+    model = ArticulatedObject(name="multiple_roots")
+    model.part("base")
+    model.part("rogue")
+
+    with pytest.raises(ValidationError, match="exactly one root part"):
+        model.validate(strict=True)
+
+
 def test_urdf_export_normalizes_motion_axis() -> None:
     model = ArticulatedObject(name="normalized_axis_export")
     base = model.part("base")

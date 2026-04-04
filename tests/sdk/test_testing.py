@@ -13,6 +13,7 @@ from sdk import (
     MotionLimits,
     Origin,
     Sphere,
+    ValidationError,
 )
 from sdk import (
     TestContext as SDKTestContext,
@@ -102,6 +103,7 @@ def _build_diagonally_floating_spheres_model() -> ArticulatedObject:
 
 def _build_overlapping_parts_model() -> ArticulatedObject:
     model = ArticulatedObject(name="overlapping_parts")
+    root = model.part("root")
 
     base = model.part("base")
     base.visual(Box((0.2, 0.2, 0.2)), origin=Origin(xyz=(0.0, 0.0, 0.1)), name="base_box")
@@ -111,6 +113,20 @@ def _build_overlapping_parts_model() -> ArticulatedObject:
         Box((0.2, 0.2, 0.2)),
         origin=Origin(xyz=(0.0, 0.0, 0.1)),
         name="child_box",
+    )
+    model.articulation(
+        "root_to_base",
+        ArticulationType.FIXED,
+        parent=root,
+        child=base,
+        origin=Origin(),
+    )
+    model.articulation(
+        "root_to_child",
+        ArticulationType.FIXED,
+        parent=root,
+        child=child,
+        origin=Origin(),
     )
 
     return model
@@ -187,6 +203,7 @@ def _build_floating_group_model() -> ArticulatedObject:
 
 def _build_multi_element_overlapping_parts_model() -> ArticulatedObject:
     model = ArticulatedObject(name="multi_element_overlapping_parts")
+    root = model.part("root")
 
     base = model.part("base")
     base.visual(Box((0.14, 0.14, 0.14)), origin=Origin(xyz=(-0.04, 0.0, 0.07)), name="base_left")
@@ -202,6 +219,20 @@ def _build_multi_element_overlapping_parts_model() -> ArticulatedObject:
         Box((0.14, 0.14, 0.14)),
         origin=Origin(xyz=(0.04, 0.0, 0.07)),
         name="child_right",
+    )
+    model.articulation(
+        "root_to_base",
+        ArticulationType.FIXED,
+        parent=root,
+        child=base,
+        origin=Origin(),
+    )
+    model.articulation(
+        "root_to_child",
+        ArticulationType.FIXED,
+        parent=root,
+        child=child,
+        origin=Origin(),
     )
 
     return model
@@ -268,6 +299,20 @@ def _build_non_articulation_overlap_only_model() -> ArticulatedObject:
         axis=(0.0, 1.0, 0.0),
         motion_limits=MotionLimits(effort=1.0, velocity=1.0, lower=-0.2, upper=0.2),
     )
+    model.articulation(
+        "base_to_rogue_a",
+        ArticulationType.FIXED,
+        parent=base,
+        child=rogue_a,
+        origin=Origin(),
+    )
+    model.articulation(
+        "base_to_rogue_b",
+        ArticulationType.FIXED,
+        parent=base,
+        child=rogue_b,
+        origin=Origin(),
+    )
     return model
 
 
@@ -294,12 +339,27 @@ def _build_pose_specific_part_overlap_model() -> ArticulatedObject:
 
 def _build_coplanar_surface_model() -> ArticulatedObject:
     model = ArticulatedObject(name="coplanar_surfaces")
+    root = model.part("root")
 
     base = model.part("base")
     base.visual(Box((0.2, 0.2, 0.2)), origin=Origin(xyz=(0.0, 0.0, 0.1)))
 
     cap = model.part("cap")
     cap.visual(Box((0.12, 0.12, 0.02)), origin=Origin(xyz=(0.0, 0.0, 0.19)))
+    model.articulation(
+        "root_to_base",
+        ArticulationType.FIXED,
+        parent=root,
+        child=base,
+        origin=Origin(),
+    )
+    model.articulation(
+        "root_to_cap",
+        ArticulationType.FIXED,
+        parent=root,
+        child=cap,
+        origin=Origin(),
+    )
 
     return model
 
@@ -327,6 +387,7 @@ def _build_adjacent_coplanar_surface_model() -> ArticulatedObject:
 
 def _build_element_gap_model() -> ArticulatedObject:
     model = ArticulatedObject(name="element_gap")
+    root = model.part("root")
 
     base = model.part("base")
     base.visual(Box((0.2, 0.2, 0.1)), origin=Origin(xyz=(0.0, 0.0, 0.05)), name="body")
@@ -334,18 +395,47 @@ def _build_element_gap_model() -> ArticulatedObject:
     arm = model.part("arm")
     arm.visual(Box((0.04, 0.04, 0.04)), origin=Origin(xyz=(0.0, 0.0, 0.121)), name="hub")
     arm.visual(Box((0.01, 0.01, 0.02)), origin=Origin(xyz=(0.0, 0.0, 0.11)), name="brace")
+    model.articulation(
+        "root_to_base",
+        ArticulationType.FIXED,
+        parent=root,
+        child=base,
+        origin=Origin(),
+    )
+    model.articulation(
+        "root_to_arm",
+        ArticulationType.FIXED,
+        parent=root,
+        child=arm,
+        origin=Origin(),
+    )
 
     return model
 
 
 def _build_nested_parts_model() -> ArticulatedObject:
     model = ArticulatedObject(name="nested_parts")
+    root = model.part("root")
 
     outer = model.part("outer")
     outer.visual(Box((0.3, 0.3, 0.3)), origin=Origin(xyz=(0.0, 0.0, 0.15)), name="shell")
 
     inner = model.part("inner")
     inner.visual(Box((0.1, 0.1, 0.1)), origin=Origin(xyz=(0.0, 0.0, 0.15)), name="insert")
+    model.articulation(
+        "root_to_outer",
+        ArticulationType.FIXED,
+        parent=root,
+        child=outer,
+        origin=Origin(),
+    )
+    model.articulation(
+        "root_to_inner",
+        ArticulationType.FIXED,
+        parent=root,
+        child=inner,
+        origin=Origin(),
+    )
 
     return model
 
@@ -365,6 +455,7 @@ def _build_mesh_overlap_model(tmp_path: Path) -> ArticulatedObject:
     _write_disconnected_boxes_obj(mesh_path)
 
     model = ArticulatedObject(name="mesh_overlap")
+    root = model.part("root")
     base = model.part("base")
     base.visual(Mesh(filename=mesh_path.as_posix()), origin=Origin(), name="frame_body")
 
@@ -373,6 +464,20 @@ def _build_mesh_overlap_model(tmp_path: Path) -> ArticulatedObject:
         Box((0.12, 0.12, 0.12)),
         origin=Origin(xyz=(0.45, 0.0, 0.0)),
         name="child_box",
+    )
+    model.articulation(
+        "root_to_base",
+        ArticulationType.FIXED,
+        parent=root,
+        child=base,
+        origin=Origin(),
+    )
+    model.articulation(
+        "root_to_child",
+        ArticulationType.FIXED,
+        parent=root,
+        child=child,
+        origin=Origin(),
     )
     return model
 
@@ -1201,6 +1306,18 @@ def _build_floating_pose_model() -> ArticulatedObject:
     return model
 
 
+def _build_multi_root_pose_model() -> ArticulatedObject:
+    model = ArticulatedObject(name="multiple_roots_pose_checks")
+
+    base = model.part("base")
+    base.visual(Box((0.2, 0.2, 0.2)), origin=Origin(xyz=(0.0, 0.0, 0.1)), name="base_box")
+
+    rogue = model.part("rogue")
+    rogue.visual(Box((0.1, 0.1, 0.1)), origin=Origin(xyz=(0.0, 0.0, 0.05)), name="rogue_box")
+
+    return model
+
+
 def test_pose_accepts_origin_for_floating_joint() -> None:
     model = _build_floating_pose_model()
     ctx = SDKTestContext(model)
@@ -1240,3 +1357,10 @@ def test_pose_kwargs_accept_origin_for_floating_joint() -> None:
         pos = ctx.part_world_position("payload")
         assert pos is not None
         assert pos == pytest.approx((0.4, -0.2, 0.15))
+
+
+def test_part_world_position_rejects_multiple_root_parts() -> None:
+    ctx = SDKTestContext(_build_multi_root_pose_model())
+
+    with pytest.raises(ValidationError, match="exactly one root part"):
+        ctx.part_world_position("base")

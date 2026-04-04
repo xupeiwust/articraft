@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import sys
 import types
 from pathlib import Path
@@ -82,6 +83,7 @@ def _write_single_box_obj(path: Path) -> None:
 
 def _build_disjoint_collision_model() -> ArticulatedObject:
     model = ArticulatedObject(name="disjoint_collision_parts")
+    root = model.part("root")
 
     left = model.part("left")
     left.visual(
@@ -95,6 +97,20 @@ def _build_disjoint_collision_model() -> ArticulatedObject:
         Box((0.1, 0.1, 0.1)),
         origin=Origin(xyz=(1.0, 0.0, 0.05)),
         name="right_box",
+    )
+    model.articulation(
+        "root_to_left",
+        ArticulationType.FIXED,
+        parent=root,
+        child=left,
+        origin=Origin(),
+    )
+    model.articulation(
+        "root_to_right",
+        ArticulationType.FIXED,
+        parent=root,
+        child=right,
+        origin=Origin(),
     )
 
     return model
@@ -276,6 +292,7 @@ def test_find_geometry_overlaps_reports_mesh_component_name(tmp_path: Path) -> N
     _write_disconnected_boxes_obj(mesh_path)
 
     model = ArticulatedObject(name="mesh_overlap")
+    root = model.part("root")
     frame = model.part("frame")
     frame.visual(Mesh(filename=mesh_path.as_posix()), origin=Origin(), name="frame_body")
 
@@ -284,6 +301,20 @@ def test_find_geometry_overlaps_reports_mesh_component_name(tmp_path: Path) -> N
         Box((0.12, 0.12, 0.12)),
         origin=Origin(xyz=(0.45, 0.0, 0.0)),
         name="blocker_box",
+    )
+    model.articulation(
+        "root_to_frame",
+        ArticulationType.FIXED,
+        parent=root,
+        child=frame,
+        origin=Origin(),
+    )
+    model.articulation(
+        "root_to_blocker",
+        ArticulationType.FIXED,
+        parent=root,
+        child=blocker,
+        origin=Origin(),
     )
 
     overlaps = geometry_qc.find_geometry_overlaps(
@@ -352,6 +383,42 @@ def test_compute_part_world_transforms_applies_floating_origin_pose() -> None:
     assert payload_tf[0][3] == pytest.approx(1.25)
     assert payload_tf[1][3] == pytest.approx(-0.5)
     assert payload_tf[2][3] == pytest.approx(0.75)
+
+
+def test_compute_part_world_transforms_rejects_multiple_root_parts() -> None:
+    model = ArticulatedObject(name="multiple_roots_world_tf")
+
+    base = model.part("base")
+    base.visual(Box((0.2, 0.2, 0.2)), origin=Origin(xyz=(0.0, 0.0, 0.1)))
+
+    rogue = model.part("rogue")
+    rogue.visual(Box((0.1, 0.1, 0.1)), origin=Origin(xyz=(0.0, 0.0, 0.05)))
+
+    with pytest.raises(geometry_qc.ValidationError, match="exactly one root part"):
+        geometry_qc.compute_part_world_transforms(model, {})
+
+
+def test_compute_part_world_transforms_uses_urdf_rpy_order() -> None:
+    model = ArticulatedObject(name="fixed_joint_rpy_order")
+
+    base = model.part("base")
+    child = model.part("child")
+    model.articulation(
+        "base_to_child",
+        ArticulationType.FIXED,
+        parent=base,
+        child=child,
+        origin=Origin(rpy=(math.pi / 2.0, 0.0, math.pi / 2.0)),
+    )
+
+    child_tf = geometry_qc.compute_part_world_transforms(model, {})["child"]
+
+    child_x = tuple(float(child_tf[row][0]) for row in range(3))
+    child_y = tuple(float(child_tf[row][1]) for row in range(3))
+    child_z = tuple(float(child_tf[row][2]) for row in range(3))
+    assert child_x == pytest.approx((0.0, 1.0, 0.0), abs=1e-9)
+    assert child_y == pytest.approx((0.0, 0.0, 1.0), abs=1e-9)
+    assert child_z == pytest.approx((1.0, 0.0, 0.0), abs=1e-9)
 
 
 def test_generate_pose_samples_keeps_floating_origin_values() -> None:

@@ -31,7 +31,8 @@ from sdk import (
 ## Units
 
 - Distances are meters.
-- Rotations are roll, pitch, yaw in radians.
+- Rotations are `Origin.rpy = (roll, pitch, yaw)` in radians.
+- `Origin.rpy` uses the URDF-compatible composition `R = Rz(yaw) * Ry(pitch) * Rx(roll)`.
 - Revolute and continuous joint positions are radians; prismatic joint
   positions are meters measured along the configured joint axis.
 - URDF cylinders are aligned with local `+Z`.
@@ -59,7 +60,7 @@ Origin(
 ```
 
 - `xyz`: translation in meters.
-- `rpy`: rotation in radians.
+- `rpy`: rotation in radians, composed as `R = Rz(yaw) * Ry(pitch) * Rx(roll)`.
 - Both fields must contain exactly 3 numbers.
 
 ## Geometry Descriptors
@@ -403,7 +404,7 @@ scaled = scale_geometry_to_size(
 
 ## Clarifications for agent usage
 
-- `Origin` is always a local rigid transform: `xyz` is translation in meters and `rpy` is roll, pitch, yaw in radians using the right-hand rule.
+- `Origin` is always a local rigid transform: `xyz` is translation in meters and `rpy` is roll, pitch, yaw in radians using the right-hand rule and the URDF-compatible composition `R = Rz(yaw) * Ry(pitch) * Rx(roll)`.
 - A part visual or collision is placed in its part-local frame with `origin=Origin(...)`; an articulation `origin` defines the child joint frame relative to the parent part frame.
 - `Mesh(...)` requires either `filename` or `name`. Use `filename` for a concrete mesh asset path and `name` for managed/materialized mesh assets that will be resolved later.
 - `Part.collisions` is not part of the authored source-model path for agent use. Author visuals; derived collision geometry is handled by validation/materialization.
