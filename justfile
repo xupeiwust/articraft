@@ -311,6 +311,28 @@ dataset-delete-category category_slug:
       --execute \
       --confirm-slug "$confirm_slug"
 
+dataset-category-upsert category_slug category_title='' category_description='' target_sdk_version='':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    category_slug={{ quote(category_slug) }}
+    category_title={{ quote(category_title) }}
+    category_description={{ quote(category_description) }}
+    target_sdk_version={{ quote(target_sdk_version) }}
+    cmd=(
+      uv run articraft-dataset --repo-root . upsert-category
+      --category-slug "$category_slug"
+    )
+    if [ -n "$category_title" ]; then
+      cmd+=(--title "$category_title")
+    fi
+    if [ -n "$category_description" ]; then
+      cmd+=(--description "$category_description")
+    fi
+    if [ -n "$target_sdk_version" ]; then
+      cmd+=(--target-sdk-version "$target_sdk_version")
+    fi
+    exec "${cmd[@]}"
+
 dataset-supercategories:
     uv run articraft-dataset --repo-root . list-supercategories
 

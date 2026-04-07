@@ -42,7 +42,7 @@ from storage.dataset_workflow import (
     upsert_category_metadata as _shared_upsert_category_metadata,
 )
 from storage.datasets import DatasetStore
-from storage.models import SupercategoryEntry
+from storage.models import CategoryRecord, SupercategoryEntry
 from storage.queries import StorageQueries
 from storage.record_authors import sync_record_authors, sync_record_rated_by
 from storage.records import RecordStore
@@ -743,6 +743,28 @@ def _build_parser() -> argparse.ArgumentParser:
         "--confirm-slug",
         help="Exact category slug confirmation required when --execute is set.",
     )
+    upsert_category = subparsers.add_parser(
+        "upsert-category",
+        help="Create or update a category entry in data/categories/<slug>/category.json.",
+    )
+    upsert_category.add_argument(
+        "--category-slug",
+        required=True,
+        help="Stable category slug to create or update.",
+    )
+    upsert_category.add_argument(
+        "--title",
+        help="Optional display title. Defaults to the existing title or a slug-derived title.",
+    )
+    upsert_category.add_argument(
+        "--description",
+        help="Optional description override.",
+    )
+    upsert_category.add_argument(
+        "--target-sdk-version",
+        choices=("base", "hybrid_cad"),
+        help="Optional target SDK version override.",
+    )
     subparsers.add_parser(
         "list-supercategories",
         help="Show configured supercategories and their category members.",
@@ -1123,6 +1145,68 @@ def main(argv: list[str] | None = None) -> int:
             f"records={search_stats.record_count} "
             f"categories={search_stats.category_count}"
         )
+        return 0
+
+    if args.command == "upsert-category":
+        repo.ensure_layout()
+        try:
+            category_slug = _normalize_required_slug(args.category_slug, "Category slug")
+        except ValueError as exc:
+            print(str(exc))
+            return 1
+
+        categories = CategoryStore(repo)
+        existing = categories.load(category_slug)
+        title = str(args.title or "").strip()
+        if not title:
+            title = (
+                str((existing or {}).get("title") or "").strip()
+                if isinstance(existing, dict)
+                else ""
+            ) or _category_title_from_slug(category_slug)
+        description = (
+            str(args.description).strip()
+            if args.description is not None
+            else (
+                str((existing or {}).get("description") or "").strip()
+                if isinstance(existing, dict)
+                else ""
+            )
+        )
+        target_sdk_version = (
+            str(args.target_sdk_version)
+            if args.target_sdk_version is not None
+            else (
+                str(existing.get("target_sdk_version"))
+                if isinstance(existing, dict) and existing.get("target_sdk_version") is not None
+                else None
+            )
+        )
+        prompt_batch_ids = (
+            [
+                str(batch_id)
+                for batch_id in existing.get("prompt_batch_ids", [])
+                if str(batch_id).strip()
+            ]
+            if isinstance(existing, dict)
+            else []
+        )
+        category = CategoryRecord(
+            schema_version=int(existing.get("schema_version", 1))
+            if isinstance(existing, dict)
+            else 1,
+            slug=category_slug,
+            title=title,
+            description=description,
+            prompt_batch_ids=prompt_batch_ids,
+            target_sdk_version=target_sdk_version,
+        )
+        categories.save(category)
+        created = not isinstance(existing, dict)
+        print(f"{'Created' if created else 'Updated'} category_slug={category_slug} title={title}")
+        print(f"path={repo.layout.category_metadata_path(category_slug)}")
+        print(f"target_sdk_version={target_sdk_version or '(unset)'}")
+        print(f"description={description or '(none)'}")
         return 0
 
     if args.command == "list-supercategories":
