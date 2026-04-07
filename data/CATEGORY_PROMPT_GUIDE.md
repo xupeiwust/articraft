@@ -153,6 +153,11 @@ of the object. That often means more than one motion.
 - Do not ignore motions of small parts (e.g., knobs, buttons, caster joints of
   the wheel, etc.).
 - Do not add obscure or gimmicky motions that are not central to the category.
+- When several parts are really one rigid supported assembly in the prompt
+  (e.g., one top tray carried by matched left/right supports, one seat carried
+  by matched hangers), say so explicitly. Treat the shared body as a single
+  rigid part, and describe duplicated supports as matched counterparts that
+  stay aligned rather than as unrelated independently posed parts.
 - Every named articulation must be tied to a physical support:
   - "wheel mounted in a fork" not "wheel spins"
   - "lid hinged from the rear edge of the housing" not "lid opens"
@@ -235,6 +240,13 @@ objects whose core function depends on them:
 | **Differential gearsets** (spider + two side gears sharing a carrier) | Carrier is both parent and child of side gears | Not modeled; pick an object with independent joints |
 | **Spring/damper return mechanisms** (cam + spring-loaded follower) | Springs have no URDF primitive; cam geometry produces no kinematics | Omit the return spring; describe only the joint axis |
 
+When a real object uses paired left/right supports or mirrored legs to carry
+one shared rigid body, prefer prompt wording that makes the shared body primary
+("a single rigid tray supported by matched left and right side assemblies") and
+that keeps the counterparts aligned. Do not describe those repeated supports as
+separately drifting or freely independent unless that independence is actually
+part of the category.
+
 ### Articulation types
 
 - **Revolute** — bounded rotation about one axis. Use for hinges, flaps, lids,
@@ -258,6 +270,8 @@ Before submitting a batch prompt:
 - [ ] Does it name the object clearly?
 - [ ] Does it list the key parts and how they connect?
 - [ ] Does it specify every joint type and axis?
+- [ ] Does it make rigid grouped parts and matched counterpart supports explicit
+      when alignment matters?
 - [ ] Does it avoid specifying numeric range-of-motion values?
 - [ ] Is it 6 sentences or fewer?
 - [ ] Does it avoid repeating system-prompt concerns?
