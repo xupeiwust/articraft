@@ -10,7 +10,7 @@ tags:
 ---
 # Wall Vent with Louvered Grille
 
-This trimmed hybrid example is useful when a vent or grille needs to read as a clean manufactured shell rather than a stack of procedural mesh fragments.
+This trimmed CadQuery example is useful when a vent or grille needs to read as a clean manufactured shell rather than a stack of procedural mesh fragments.
 
 ```python
 import cadquery as cq

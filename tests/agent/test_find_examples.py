@@ -12,7 +12,7 @@ from agent.tools.find_examples import FindExamplesTool
 
 def test_parse_example_document_reads_frontmatter() -> None:
     repo_root = Path(__file__).resolve().parents[2]
-    path = repo_root / "sdk" / "_examples" / "hybrid" / "simple_rectangular_plate.md"
+    path = repo_root / "sdk" / "_examples" / "cadquery" / "simple_rectangular_plate.md"
 
     doc = parse_example_document(path)
 
@@ -94,7 +94,7 @@ def test_find_examples_tool_returns_expected_shape() -> None:
 
     assert len(output) == 1
     assert output[0]["title"] == "Making Lofts"
-    assert output[0]["path"] == "sdk/_examples/hybrid/making_lofts.md"
+    assert output[0]["path"] == "sdk/_examples/cadquery/making_lofts.md"
     assert "content" in output[0]
     assert output[0]["match_quality"] == "strong"
     assert output[0]["matched_tokens"]
@@ -189,7 +189,7 @@ def test_search_example_documents_sdk_can_retrieve_cadquery_examples() -> None:
 
     assert matches
     assert matches[0].title == "Making Lofts"
-    assert matches[0].path.as_posix().endswith("sdk/_examples/hybrid/making_lofts.md")
+    assert matches[0].path.as_posix().endswith("sdk/_examples/cadquery/making_lofts.md")
 
 
 def test_search_example_documents_can_return_weakly_relevant_base_matches() -> None:
@@ -211,7 +211,7 @@ def test_find_examples_repeated_results_replace_full_content_with_blurb() -> Non
                 "title": "Making Lofts",
                 "description": "Loft example",
                 "tags": ["cadquery"],
-                "path": "sdk/_examples/hybrid/making_lofts.md",
+                "path": "sdk/_examples/cadquery/making_lofts.md",
                 "content": "# full example",
             }
         ]
@@ -222,7 +222,7 @@ def test_find_examples_repeated_results_replace_full_content_with_blurb() -> Non
                 "title": "Making Lofts",
                 "description": "Loft example",
                 "tags": ["cadquery"],
-                "path": "sdk/_examples/hybrid/making_lofts.md",
+                "path": "sdk/_examples/cadquery/making_lofts.md",
                 "content": "# full example",
             }
         ]
@@ -249,7 +249,7 @@ def test_find_examples_cache_can_seed_from_prior_conversation() -> None:
                                 "title": "Making Lofts",
                                 "description": "Loft example",
                                 "tags": ["cadquery"],
-                                "path": "sdk/_examples/hybrid/making_lofts.md",
+                                "path": "sdk/_examples/cadquery/making_lofts.md",
                                 "content": "# full example",
                             }
                         ]
@@ -265,7 +265,7 @@ def test_find_examples_cache_can_seed_from_prior_conversation() -> None:
                 "title": "Making Lofts",
                 "description": "Loft example",
                 "tags": ["cadquery"],
-                "path": "sdk/_examples/hybrid/making_lofts.md",
+                "path": "sdk/_examples/cadquery/making_lofts.md",
                 "content": "# full example",
             }
         ]
@@ -333,12 +333,12 @@ def test_first_turn_no_tool_response_no_longer_injects_nudge(tmp_path: Path) -> 
 
     assert result.reason == TerminateReason.MAX_TURNS
     assert len(result.conversation) == 3
-    assert result.conversation[0]["content"].startswith("make a bracket")
+    assert result.conversation[0]["content"].startswith("<runtime_task_guidance>")
     assert (
         "Prefer multiple small `apply_patch` edits over one giant patch."
         in result.conversation[0]["content"]
     )
-    assert result.conversation[0]["content"].endswith("</runtime_task_guidance>")
+    assert result.conversation[0]["content"].endswith("make a bracket")
     assert result.conversation[2]["content"].startswith("<compile_required>")
     assert all(
         "<first_turn_tool_nudge>" not in str(message.get("content", ""))

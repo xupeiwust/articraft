@@ -173,7 +173,7 @@ def example_dirs_for_sdk(sdk_package: str) -> tuple[Path, ...]:
     if sdk_package == "sdk":
         return (
             examples_root() / "base",
-            examples_root() / "hybrid",
+            examples_root() / "cadquery",
         )
     raise ValueError(f"Unsupported SDK package for examples: {sdk_package!r}")
 
