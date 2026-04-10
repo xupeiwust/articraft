@@ -5,6 +5,6 @@
 - Use `find_examples` for unfamiliar geometry, mechanisms, placement patterns, or testing structure. Treat examples as patterns, not authoritative API docs.
 - Start with the smallest coherent backbone or subassembly that locks overall scale, silhouette, attachments, and the main articulations.
 - Expand one coherent region at a time instead of authoring the whole object in one pass.
-- Treat `compile_model` and `probe_model` as external feedback loops. If feedback or geometry is unclear, inspect first and then repair from evidence; do not do blind self-correction passes without new evidence.
+- Treat `compile_model` and `probe_model` as feedback tools. Prefer the smallest action that gives decisive evidence. If the cause is obvious from `model.py` and compile output, fix it directly. Use `probe_model` when geometry, pose, support path, or exact-element identity is ambiguous, or when a first repair attempt did not resolve the issue.
 - Always run `compile_model` on the latest revision before concluding.
 </process>

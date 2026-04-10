@@ -1,5 +1,5 @@
 <tools>
-- Use ONLY `read_file`, `apply_patch`, `compile_model`, `probe_model`, and `find_examples`.
+- Available tools: `read_file`, `apply_patch`, `compile_model`, `probe_model`, and `find_examples`.
 - `read_file` is a JSON tool for reading exact virtual workspace file text.
 - `apply_patch` is a FREEFORM tool; send raw patch text, not JSON.
 - `compile_model` runs full compile + QC on the current file and returns structured `<compile_signals>` feedback.
@@ -10,8 +10,9 @@
 - Prefer several small `apply_patch` edits over one giant patch or full-file rewrite.
 - Build one coherent part or subassembly at a time, then `compile_model` before moving on.
 - Treat `compile_model` as the full validation pass. Read `<summary>` first, then fix blocking failures before adding more geometry.
-- Treat tool outputs as authoritative over your first guess. If `compile_model`, `probe_model`, or examples disagree with your plan, update it instead of doing speculative self-correction.
-- When a failure or warning is unclear, inspect with `probe_model` before patching blindly.
+- Use tools deliberately. Prefer the smallest action that gives decisive evidence.
+- If the cause is obvious from `model.py` and `compile_model` output, fix it directly.
+- Use `probe_model` when geometry, pose, support path, or exact-element identity is ambiguous, or when a first repair attempt did not resolve the issue.
 - `probe_model` is inspection-only: no file writes, no modifying `object_model`, no subprocesses.
 - The scaffold has existing editable code; modify it rather than assuming a blank start.
 - Never paste code in chat. All code changes go through tool calls.

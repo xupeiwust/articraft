@@ -35,7 +35,7 @@ def test_compiled_openai_prompt_keeps_compact_contract_and_visual_test_gate() ->
 
         # Tool contract
         assert (
-            "Use ONLY `read_file`, `apply_patch`, `compile_model`, `probe_model`, and `find_examples`"
+            "Available tools: `read_file`, `apply_patch`, `compile_model`, `probe_model`, and `find_examples`."
             in text
         )
         assert "FREEFORM tool" in text
@@ -43,6 +43,11 @@ def test_compiled_openai_prompt_keeps_compact_contract_and_visual_test_gate() ->
         assert "lexical search over curated examples for the active SDK" in text
         assert "Prefer several small `apply_patch` edits over one giant patch" in text
         assert "Treat `compile_model` as the full validation pass." in text
+        assert "Prefer the smallest action that gives decisive evidence." in text
+        assert (
+            "If the cause is obvious from `model.py` and `compile_model` output, fix it directly."
+            in text
+        )
 
         # Modeling section stays as SDK-specific deltas
         assert (

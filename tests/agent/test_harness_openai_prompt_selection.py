@@ -70,13 +70,18 @@ def test_openai_prompt_resolution_and_payload_preview() -> None:
 
     # Tool contract
     assert (
-        "Use ONLY `read_file`, `apply_patch`, `compile_model`, `probe_model`, and `find_examples`"
+        "Available tools: `read_file`, `apply_patch`, `compile_model`, `probe_model`, and `find_examples`."
         in instructions
     )
     assert "FREEFORM tool" in instructions
     assert "write_code" not in instructions
     assert "Prefer several small `apply_patch` edits over one giant patch" in instructions
     assert "Treat `compile_model` as the full validation pass." in instructions
+    assert "Prefer the smallest action that gives decisive evidence." in instructions
+    assert (
+        "If the cause is obvious from `model.py` and `compile_model` output, fix it directly."
+        in instructions
+    )
 
     # Three hard requirements
     assert "NO FLOATING PARTS" in instructions
@@ -162,7 +167,7 @@ def test_openai_payload_preview_includes_find_examples_tool() -> None:
         tool.get("type") != "function" or tool.get("strict") is True for tool in payload["tools"]
     )
     assert (
-        "Use ONLY `read_file`, `apply_patch`, `compile_model`, `probe_model`, and `find_examples`"
+        "Available tools: `read_file`, `apply_patch`, `compile_model`, `probe_model`, and `find_examples`."
         in payload["instructions"]
     )
     assert "lexical search over curated examples for the active SDK" in payload["instructions"]
@@ -318,13 +323,18 @@ def test_gemini_prompt_resolution_and_payload_preview() -> None:
 
     # Tool contract
     assert (
-        "Use ONLY `read_file`, `edit_code`, `compile_model`, `probe_model`, and `find_examples`"
+        "Available tools: `read_file`, `edit_code`, `compile_model`, `probe_model`, and `find_examples`."
         in gemini_instructions
     )
     assert 'old_string=""' in gemini_instructions
     assert "write_code" not in gemini_instructions
     assert "Prefer small exact `edit_code` replacements over broad rewrites" in gemini_instructions
     assert "Treat `compile_model` as the full validation pass." in gemini_instructions
+    assert "Prefer the smallest action that gives decisive evidence." in gemini_instructions
+    assert (
+        "If the cause is obvious from `model.py` and `compile_model` output, fix it directly."
+        in gemini_instructions
+    )
 
     # Three hard requirements
     assert "NO FLOATING PARTS" in gemini_instructions
@@ -398,7 +408,7 @@ def test_gemini_payload_preview_includes_find_examples_tool() -> None:
     assert "probe_model" in tool_names
     assert "find_examples" in tool_names
     assert (
-        "Use ONLY `read_file`, `edit_code`, `compile_model`, `probe_model`, and `find_examples`"
+        "Available tools: `read_file`, `edit_code`, `compile_model`, `probe_model`, and `find_examples`."
         in payload["config"]["system_instruction"]
     )
     assert (

@@ -1,5 +1,5 @@
 <tools>
-- Use ONLY `read_file`, `edit_code`, `compile_model`, `probe_model`, and `find_examples`.
+- Available tools: `read_file`, `edit_code`, `compile_model`, `probe_model`, and `find_examples`.
 - `read_file` reads exact virtual workspace file text. Use `path="model.py"` for the full artifact file and `path="docs/..."` for read-only SDK docs.
 - `edit_code` performs surgical text replacement in the editable section.
 - `compile_model` runs full compile + QC on the current file and returns structured `<compile_signals>` feedback.
@@ -11,8 +11,9 @@
 - If `edit_code` fails because `old_string` did not match, call `read_file(path="model.py")` again and retry with a smaller exact snippet.
 - Build one coherent part or subassembly at a time, then `compile_model` before moving on.
 - Treat `compile_model` as the full validation pass. Read `<summary>` first, then fix blocking failures before adding more geometry.
-- Treat tool outputs as authoritative over your first guess. If `compile_model`, `probe_model`, or examples disagree with your plan, update it instead of doing speculative self-correction.
-- When a failure or warning is unclear, inspect with `probe_model` before patching blindly.
+- Use tools deliberately. Prefer the smallest action that gives decisive evidence.
+- If the cause is obvious from `model.py` and `compile_model` output, fix it directly.
+- Use `probe_model` when geometry, pose, support path, or exact-element identity is ambiguous, or when a first repair attempt did not resolve the issue.
 - The scaffold has existing editable code; do not assume `old_string=""` for a blank start.
 - `probe_model` is inspection-only: no file writes, no modifying `object_model`, no subprocesses.
 - Never paste code in chat. All code changes go through tool calls.

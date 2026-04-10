@@ -74,7 +74,7 @@ def test_prompt_outputs_are_current() -> None:
     openai_text = compiled_by_name["designer_system_prompt_openai.txt"]
     _assert_shared_contract(openai_text)
     assert (
-        "Use ONLY `read_file`, `apply_patch`, `compile_model`, `probe_model`, and `find_examples`"
+        "Available tools: `read_file`, `apply_patch`, `compile_model`, `probe_model`, and `find_examples`."
         in openai_text
     )
     assert "write_code" not in openai_text
@@ -94,11 +94,16 @@ def test_prompt_outputs_are_current() -> None:
     )
     assert "Author visual geometry only; do not author collision geometry in `sdk`." in openai_text
     assert "Treat `compile_model` as the full validation pass." in openai_text
+    assert "Prefer the smallest action that gives decisive evidence." in openai_text
+    assert (
+        "If the cause is obvious from `model.py` and `compile_model` output, fix it directly."
+        in openai_text
+    )
 
     gemini_text = compiled_by_name["designer_system_prompt_gemini.txt"]
     _assert_shared_contract(gemini_text)
     assert (
-        "Use ONLY `read_file`, `edit_code`, `compile_model`, `probe_model`, and `find_examples`"
+        "Available tools: `read_file`, `edit_code`, `compile_model`, `probe_model`, and `find_examples`."
         in gemini_text
     )
     assert 'old_string=""' in gemini_text
@@ -116,3 +121,8 @@ def test_prompt_outputs_are_current() -> None:
         in gemini_text
     )
     assert "Author visual geometry only; do not author collision geometry in `sdk`." in gemini_text
+    assert "Prefer the smallest action that gives decisive evidence." in gemini_text
+    assert (
+        "If the cause is obvious from `model.py` and `compile_model` output, fix it directly."
+        in gemini_text
+    )
