@@ -49,6 +49,7 @@ _COMMON_DOCS = (
     Path("sdk/_docs/common/10_errors.md"),
     Path("sdk/_docs/common/20_core_types.md"),
     Path("sdk/_docs/common/30_articulated_object.md"),
+    Path("sdk/_docs/common/40_assets.md"),
     Path("sdk/_docs/common/50_placement.md"),
     Path("sdk/_docs/common/70_probe_tooling.md"),
     Path("sdk/_docs/common/80_testing.md"),
@@ -66,6 +67,7 @@ _CADQUERY_DOCS = (
     Path("sdk/_docs/cadquery/37_cadquery_workplane.md"),
     Path("sdk/_docs/cadquery/38_cadquery_sketch.md"),
     Path("sdk/_docs/cadquery/39_cadquery_assembly.md"),
+    Path("sdk/_docs/cadquery/39d_cadquery_gears.md"),
     Path("sdk/_docs/cadquery/39b_cadquery_free_function.md"),
     Path("sdk/_docs/cadquery/39c_cadquery_api_ref.md"),
 )

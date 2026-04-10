@@ -18,8 +18,10 @@ def test_load_sdk_docs_bundle_mounts_router_and_default_refs() -> None:
         "docs/sdk/references/probe-tooling.md",
         "docs/sdk/references/testing.md",
     )
+    assert "docs/sdk/references/assets.md" in bundle.files_by_path
     assert "docs/sdk/references/geometry/mesh-geometry.md" in bundle.files_by_path
     assert "docs/sdk/references/cadquery/overview.md" in bundle.files_by_path
+    assert "docs/sdk/references/cadquery/gears.md" in bundle.files_by_path
 
 
 def test_virtual_workspace_resolves_model_and_docs_paths(tmp_path: Path) -> None:

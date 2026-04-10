@@ -176,6 +176,7 @@ _DOC_PATH_ALIASES = {
     "sdk/_docs/common/10_errors.md": "references/errors.md",
     "sdk/_docs/common/20_core_types.md": "references/core-types.md",
     "sdk/_docs/common/30_articulated_object.md": "references/articulated-object.md",
+    "sdk/_docs/common/40_assets.md": "references/assets.md",
     "sdk/_docs/common/50_placement.md": "references/placement.md",
     "sdk/_docs/common/70_probe_tooling.md": "references/probe-tooling.md",
     "sdk/_docs/common/80_testing.md": "references/testing.md",
@@ -187,6 +188,7 @@ _DOC_PATH_ALIASES = {
     "sdk/_docs/cadquery/37_cadquery_workplane.md": "references/cadquery/workplane.md",
     "sdk/_docs/cadquery/38_cadquery_sketch.md": "references/cadquery/sketch.md",
     "sdk/_docs/cadquery/39_cadquery_assembly.md": "references/cadquery/assembly.md",
+    "sdk/_docs/cadquery/39d_cadquery_gears.md": "references/cadquery/gears.md",
     "sdk/_docs/cadquery/39b_cadquery_free_function.md": "references/cadquery/free-functions.md",
     "sdk/_docs/cadquery/39c_cadquery_api_ref.md": "references/cadquery/api-ref.md",
 }

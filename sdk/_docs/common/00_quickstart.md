@@ -28,6 +28,7 @@ Always available in `docs/sdk/references/`:
   types.
 - `articulated-object.md`: object, part, and articulation authoring helpers and lookup
   patterns.
+- `assets.md`: explicit asset-root helpers for standalone scripts and tests.
 - `placement.md`: placement helpers for mounting, offsets, wrapping, and alignment.
 - `probe-tooling.md`: `probe_model` helper catalog and inspection workflow.
 - `testing.md`: `TestContext`, `expect_*` assertions, and test authoring patterns.
@@ -36,6 +37,8 @@ Always available in `docs/sdk/references/`:
 - `cadquery/workplane.md`: workplane-based modeling patterns and common operations.
 - `cadquery/sketch.md`: sketch-driven 2D profiles and profile construction tools.
 - `cadquery/assembly.md`: CadQuery assembly helpers and composition patterns.
+- `cadquery/gears.md`: vendored gear builders and the preserved `Workplane.gear()`
+  plugin workflow.
 - `cadquery/free-functions.md`: free-function geometry helpers and utility builders.
 - `cadquery/api-ref.md`: compact CadQuery API reference and signatures.
 
@@ -86,6 +89,8 @@ Use logical mesh names. Articraft manages the materialized OBJ asset paths.
 - Generate procedural meshes with `mesh_from_geometry(..., "part_name")`.
 - Import existing OBJ inputs with `mesh_from_input("mesh_name")`.
 - Use `TestContext(object_model)`; do not wire asset roots manually.
+- If you are writing a standalone local script and need a stable asset root,
+  read `docs/sdk/references/assets.md`.
 
 ## Minimal Example
 
@@ -208,6 +213,7 @@ makes positive angles open upward.
 - If you need type or helper signatures, read `docs/sdk/references/core-types.md`.
 - If you need part/object construction patterns, read
   `docs/sdk/references/articulated-object.md`.
+- If you need explicit asset-root control, read `docs/sdk/references/assets.md`.
 - If you need placement logic, read `docs/sdk/references/placement.md`.
 - If you need compile/debug interpretation, read `docs/sdk/references/errors.md`.
 - If you need probe helper details, read `docs/sdk/references/probe-tooling.md`.
