@@ -1098,6 +1098,11 @@ def _response_rules_for_failures(
         return rules
 
     primary = failures[0]
+    intentional_qc_allowance_rule = (
+        "- If any disconnected or overlapping finding is intentional, declare explicit "
+        "allowances for every intentional case. Otherwise fix the underlying support "
+        "path, mount, geometry, or pose."
+    )
     rules: list[str]
     if primary.kind == "compile_runtime":
         rules = [
@@ -1123,13 +1128,13 @@ def _response_rules_for_failures(
     elif primary.source == "compiler" and primary.kind == "isolated_part":
         rules = [
             "- Fix the compiler-owned floating/disconnected part failure first. Do not keep patching authored exact checks until the global QC failure is gone.",
-            "- If the disconnected part is intentional, justify it with an explicit isolated-part allowance. Otherwise add the missing support path or mount.",
+            intentional_qc_allowance_rule,
         ]
     elif primary.source == "compiler" and primary.kind == "real_overlap":
         rules = [
             "- Fix the compiler-owned blocking overlap first. Do not keep patching authored exact checks until the global QC failure is gone.",
             "- This is a real 3D interpenetration finding, not a tolerance issue.",
-            "- If the penetration is intentional, prove that with an explicit allowance. Otherwise change geometry, mount layout, or pose.",
+            intentional_qc_allowance_rule,
         ]
     elif primary.kind == "missing_exact_geometry":
         rules = [
@@ -1146,12 +1151,12 @@ def _response_rules_for_failures(
     elif primary.kind == "real_overlap":
         rules = [
             "- Fix the real 3D overlap in the tested pose before adding more exact checks.",
-            "- If the penetration is intentional, use an explicit allowance. Otherwise change geometry, mount layout, or the tested pose.",
+            intentional_qc_allowance_rule,
         ]
     elif primary.kind == "isolated_part":
         rules = [
             "- Fix the floating/disconnected part failure before tuning secondary geometry.",
-            "- If the disconnection is intentional, justify it explicitly. Otherwise add the missing support path or mount.",
+            intentional_qc_allowance_rule,
         ]
     else:
         rules = [
