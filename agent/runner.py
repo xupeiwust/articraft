@@ -111,6 +111,43 @@ _DRAFT_MOTION_LIMIT_EXAMPLE_BLOCK = """    # if hinge_limits is not None and hin
 """
 
 
+def _read_logged_cost_totals(cost_path: Path) -> tuple[dict[str, int] | None, float | None]:
+    try:
+        payload = json.loads(cost_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None, None
+    if not isinstance(payload, dict):
+        return None, None
+
+    total = payload.get("all_in_total")
+    if not isinstance(total, dict):
+        total = payload.get("total")
+    if not isinstance(total, dict):
+        return None, None
+
+    raw_tokens = total.get("tokens")
+    tokens: dict[str, int] | None = None
+    if isinstance(raw_tokens, dict):
+        parsed_tokens: dict[str, int] = {}
+        for key in (
+            "prompt_tokens",
+            "cached_tokens",
+            "uncached_prompt_tokens",
+            "candidates_tokens",
+            "total_tokens",
+        ):
+            value = raw_tokens.get(key)
+            if isinstance(value, int):
+                parsed_tokens[key] = value
+        if parsed_tokens:
+            tokens = parsed_tokens
+
+    costs_usd = total.get("costs_usd")
+    amount = costs_usd.get("total") if isinstance(costs_usd, dict) else None
+    total_cost = float(amount) if isinstance(amount, (int, float)) else None
+    return tokens, total_cost
+
+
 def _resolve_post_success_design_audit(
     *,
     provider: str,
@@ -1551,15 +1588,16 @@ async def _execute_single_run(
         )
 
     if result.usage:
-        logger.info("Total tokens: %s", result.usage)
-        try:
-            if resolved_context.cost_path.exists():
-                with open(resolved_context.cost_path, encoding="utf-8") as file:
-                    cost_data = json.load(file)
-                    total_cost = cost_data.get("total", {}).get("costs_usd", {}).get("total", 0.0)
-                    logger.info("Total cost: $%.6f", total_cost)
-        except Exception:
-            pass
+        logged_usage = result.usage
+        logged_cost: float | None = None
+        if resolved_context.cost_path.exists():
+            cost_usage, cost_total = _read_logged_cost_totals(resolved_context.cost_path)
+            if cost_usage:
+                logged_usage = cost_usage
+            logged_cost = cost_total
+        logger.info("Total tokens: %s", logged_usage)
+        if logged_cost is not None:
+            logger.info("Total cost: $%.6f", logged_cost)
 
     if result.urdf_xml is not None:
         urdf_xml = result.urdf_xml
