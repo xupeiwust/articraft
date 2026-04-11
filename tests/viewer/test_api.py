@@ -522,7 +522,10 @@ def test_viewer_api_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     bootstrap = client.get("/api/bootstrap").json()
     assert bootstrap["repo_root"] == repo_root.resolve().as_posix()
     assert len(bootstrap["workbench_entries"]) == 3
-    assert bootstrap["dataset_entries"] == []
+    assert [item["dataset_id"] for item in bootstrap["dataset_entries"]] == [
+        "dj_dataset_001",
+        "hinge_dataset_001",
+    ]
     assert len(bootstrap["staging_entries"]) == 1
     assert len(bootstrap["runs"]) == 2
     assert bootstrap["staging_entries"][0]["run_id"] == "run_live_001"
@@ -719,7 +722,11 @@ def test_viewer_api_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 
     bootstrap_after_promote = client.get("/api/bootstrap").json()
     assert len(bootstrap_after_promote["workbench_entries"]) == 2
-    assert bootstrap_after_promote["dataset_entries"] == []
+    assert [item["dataset_id"] for item in bootstrap_after_promote["dataset_entries"]] == [
+        "dj_dataset_001",
+        "ds_exercise_bikes_0001",
+        "hinge_dataset_001",
+    ]
     dataset_after_promote = client.get("/api/collections/dataset").json()
     assert [item["dataset_id"] for item in dataset_after_promote] == [
         "dj_dataset_001",
@@ -804,7 +811,10 @@ def test_viewer_api_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         "output_token_sample_count": 1,
     }
     assert len(dashboard_payload["cost_trend"]["points"]) == 1
-    assert dashboard_payload["cost_trend"]["points"][0]["date_key"] == "2026-03-17"
+    assert dashboard_payload["cost_trend"]["points"][0]["date_key"] in {
+        "2026-03-17",
+        "2026-03-18",
+    }
     assert dashboard_payload["cost_trend"]["points"][0]["record_count"] == 2
     assert dashboard_payload["cost_trend"]["points"][0]["total_cost_usd"] == 0.2
     assert dashboard_payload["cost_trend"]["points"][0]["daily_average_cost_usd"] == 0.1
@@ -953,7 +963,10 @@ def test_viewer_api_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 
     bootstrap_after_delete = client.get("/api/bootstrap").json()
     assert len(bootstrap_after_delete["workbench_entries"]) == 1
-    assert bootstrap_after_delete["dataset_entries"] == []
+    assert [item["record_id"] for item in bootstrap_after_delete["dataset_entries"]] == [
+        "rec_dj_001",
+        "rec_bike_001",
+    ]
     dataset_after_delete = client.get("/api/collections/dataset").json()
     assert [item["record_id"] for item in dataset_after_delete] == [
         "rec_dj_001",

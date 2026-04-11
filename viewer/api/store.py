@@ -110,6 +110,13 @@ def _coerce_string(value: Any) -> str | None:
     return None
 
 
+def _normalize_sdk_package_value(value: Any) -> str | None:
+    normalized = _coerce_string(value)
+    if normalized in {"sdk_hybrid", "hybrid", "base"}:
+        return "sdk"
+    return normalized
+
+
 def _thinking_level_from_provenance(provenance: Any) -> str | None:
     if not isinstance(provenance, dict):
         return None
@@ -665,7 +672,7 @@ class ViewerStore:
 
             from agent.compiler import compile_urdf_report, compile_urdf_report_maybe_timeout
 
-            sdk_package = str(refreshed_record.get("sdk_package") or "sdk")
+            sdk_package = _normalize_sdk_package_value(refreshed_record.get("sdk_package")) or "sdk"
             run_checks = bool(validate and target == "full")
             validation_level = "full" if run_checks else "none"
             checks_run = (
@@ -901,7 +908,7 @@ class ViewerStore:
             created_at=record.get("created_at"),
             updated_at=record.get("updated_at"),
             viewer_asset_updated_at=self._viewer_asset_updated_at_for_record(record_id),
-            sdk_package=record.get("sdk_package"),
+            sdk_package=_normalize_sdk_package_value(record.get("sdk_package")),
             provider=record.get("provider"),
             model_id=record.get("model_id"),
             thinking_level=thinking_level,
@@ -976,7 +983,7 @@ class ViewerStore:
             created_at=record.get("created_at"),
             updated_at=record.get("updated_at"),
             viewer_asset_updated_at=None,
-            sdk_package=record.get("sdk_package"),
+            sdk_package=_normalize_sdk_package_value(record.get("sdk_package")),
             provider=record.get("provider"),
             model_id=record.get("model_id"),
             thinking_level=thinking_level,
@@ -1096,7 +1103,7 @@ class ViewerStore:
         return DashboardRecord(
             record_id=record_id,
             created_at=_coerce_string(record.get("created_at")),
-            sdk_package=_coerce_string(record.get("sdk_package")),
+            sdk_package=_normalize_sdk_package_value(record.get("sdk_package")),
             total_cost_usd=total_cost_usd,
             effective_rating=_effective_rating(primary_rating, secondary_rating),
             author=_coerce_string(record.get("author")),
@@ -1840,7 +1847,7 @@ class ViewerStore:
                         provider=run_metadata.get("provider"),
                         model_id=run_metadata.get("model_id"),
                         thinking_level=thinking_level,
-                        sdk_package=run_metadata.get("sdk_package"),
+                        sdk_package=_normalize_sdk_package_value(run_metadata.get("sdk_package")),
                         turn_count=(
                             result_turn_count
                             if result_turn_count is not None
@@ -1884,7 +1891,7 @@ class ViewerStore:
             updated_at=run_metadata.get("updated_at"),
             provider=run_metadata.get("provider"),
             model_id=run_metadata.get("model_id"),
-            sdk_package=run_metadata.get("sdk_package"),
+            sdk_package=_normalize_sdk_package_value(run_metadata.get("sdk_package")),
             prompt_count=run_metadata.get("prompt_count"),
             result_count=len(results),
             success_count=success_count,
@@ -1963,7 +1970,7 @@ class ViewerStore:
             repo_root=self.repo_root.as_posix(),
             generated_at=_utc_now(),
             workbench_entries=self.list_workbench_entries(summary_cache=summary_cache),
-            dataset_entries=[],
+            dataset_entries=self.list_dataset_entries(summary_cache=summary_cache),
             staging_entries=self.list_staging_entries(summary_cache=summary_cache),
             runs=self.list_runs(),
             supercategories=self.list_supercategories(),
@@ -2166,9 +2173,7 @@ class ViewerStore:
                 if isinstance(category_payload, dict)
                 else ""
             )
-            if target_sdk_version == "hybrid_cad":
-                category_sdk_packages[category] = "sdk_hybrid"
-            elif target_sdk_version == "base":
+            if target_sdk_version in {"hybrid_cad", "base"}:
                 category_sdk_packages[category] = "sdk"
             else:
                 record_sdk_packages = category_record_sdk_packages.get(category) or set()

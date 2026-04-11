@@ -45,7 +45,7 @@ function formatAverageRating(value: number | null): string {
 }
 
 function formatSdkPackage(value: string | null): string {
-  if (value === "sdk_hybrid") return "sdk_hybrid";
+  if (value === "sdk_hybrid") return "sdk";
   if (value === "sdk") return "sdk";
   return "—";
 }

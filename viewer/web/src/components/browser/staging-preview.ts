@@ -18,7 +18,7 @@ const PREVIEW_STAGING_ENTRY: StagingEntry = {
   provider: "openai",
   model_id: "gpt-5.4",
   thinking_level: "high",
-  sdk_package: "sdk_hybrid",
+  sdk_package: "sdk",
   turn_count: 7,
   tool_call_count: 18,
   compile_attempt_count: 2,
