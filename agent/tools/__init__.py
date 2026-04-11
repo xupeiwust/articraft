@@ -77,7 +77,6 @@ _FIRST_TURN_RUNTIME_GUIDANCE_BY_PROVIDER: dict[str, str] = {
         '- Use `read_file(path="model.py")` only when you need the full scaffolded artifact, not when copying `old_string` for `edit_code`.\n'
         "- Do not front-load unrelated docs, and do not re-read a reference file that is already in context.\n"
         "- Use `find_examples` for unfamiliar geometry, mechanisms, placement patterns, or testing structure, and adapt examples against current SDK docs.\n"
-        "- If you need multiple independent read-only lookups, issue them in one response; keep `edit_code` and `compile_model` in their own response.\n"
         "- Prefer small exact `edit_code` replacements over broad rewrites.\n"
         "- If `edit_code` fails, reread the exact current editable text with `read_code()` before retrying.\n"
         "- After each coherent chunk, run `compile_model` before moving on.\n"
