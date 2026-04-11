@@ -17,6 +17,9 @@ from storage.materialize import (
     MaterializationStore,
     build_compile_fingerprint_from_inputs,
     build_compile_fingerprint_inputs,
+    build_materialization_summary,
+    build_model_source_snapshot,
+    compile_report_matches_model_source_snapshot,
     infer_materialization_status,
 )
 from storage.models import CompileReport as StorageCompileReport
@@ -407,6 +410,31 @@ def _compile_report_matches_fingerprint(
     return isinstance(fingerprint, str) and fingerprint == current_fingerprint
 
 
+def _current_compile_fingerprint(
+    model_path: Path,
+    *,
+    compile_report: dict[str, Any] | None,
+) -> str | None:
+    if not model_path.exists():
+        return None
+
+    snapshot_match = compile_report_matches_model_source_snapshot(
+        compile_report,
+        model_path=model_path,
+    )
+    if snapshot_match:
+        metrics = compile_report.get("metrics") if isinstance(compile_report, dict) else None
+        fingerprint = (
+            metrics.get("materialization_fingerprint") if isinstance(metrics, dict) else None
+        )
+        if isinstance(fingerprint, str) and fingerprint:
+            return fingerprint
+
+    return build_compile_fingerprint_from_inputs(
+        build_compile_fingerprint_inputs(model_path=model_path)
+    )
+
+
 @dataclass(slots=True, frozen=True)
 class MaterializeRecordAssetsResult:
     record_id: str
@@ -542,7 +570,10 @@ class ViewerStore:
         warnings: list[str],
         compile_level: str,
         validation_level: str,
+        model_path: Path,
         fingerprint_inputs: dict[str, str | None],
+        materialization_summary: dict[str, Any] | None = None,
+        compile_elapsed_seconds: float | None = None,
         checks_run: list[str] | None = None,
     ) -> None:
         existing_report = self.repo.read_json(compile_path)
@@ -558,6 +589,11 @@ class ViewerStore:
         metrics["materialization_fingerprint"] = build_compile_fingerprint_from_inputs(
             fingerprint_inputs
         )
+        metrics.update(build_model_source_snapshot(model_path=model_path))
+        if materialization_summary:
+            metrics.update(materialization_summary)
+        if compile_elapsed_seconds is not None:
+            metrics["compile_elapsed_seconds"] = float(max(compile_elapsed_seconds, 0.0))
         report = StorageCompileReport(
             schema_version=1,
             record_id=record_id,
@@ -590,12 +626,11 @@ class ViewerStore:
             record,
         )
         record_dir = self.repo.layout.record_dir(record_id)
-        current_fingerprint = None
-        if model_path.exists():
-            current_fingerprint = build_compile_fingerprint_from_inputs(
-                build_compile_fingerprint_inputs(model_path=model_path)
-            )
         compile_report = self.repo.read_json(compile_path)
+        current_fingerprint = _current_compile_fingerprint(
+            model_path,
+            compile_report=compile_report if isinstance(compile_report, dict) else None,
+        )
         existing_compile_status = (
             str(compile_report.get("status"))
             if isinstance(compile_report, dict) and isinstance(compile_report.get("status"), str)
@@ -637,9 +672,11 @@ class ViewerStore:
             record_dir = self.repo.layout.record_dir(record_id)
             if not model_path.exists():
                 raise FileNotFoundError(f"Record model not found: {model_path}")
-            fingerprint_inputs = build_compile_fingerprint_inputs(model_path=model_path)
-            current_fingerprint = build_compile_fingerprint_from_inputs(fingerprint_inputs)
             compile_report = self.repo.read_json(compile_path)
+            current_fingerprint = _current_compile_fingerprint(
+                model_path,
+                compile_report=compile_report if isinstance(compile_report, dict) else None,
+            )
             existing_compile_status = (
                 str(compile_report.get("status"))
                 if isinstance(compile_report, dict)
@@ -665,6 +702,7 @@ class ViewerStore:
                     materialization_status=materialization_status,
                 )
 
+            fingerprint_inputs = build_compile_fingerprint_inputs(model_path=model_path)
             if force:
                 self._clear_derived_asset_outputs(
                     record_id,
@@ -688,6 +726,7 @@ class ViewerStore:
             compile_fn = (
                 compile_urdf_report_maybe_timeout if use_compile_timeout else compile_urdf_report
             )
+            compile_started_at = time.perf_counter()
             try:
                 compile_result = compile_fn(
                     model_path,
@@ -697,6 +736,7 @@ class ViewerStore:
                     target="visual" if target == "visual" else "full",
                 )
             except Exception as exc:
+                compile_elapsed_seconds = time.perf_counter() - compile_started_at
                 warnings = getattr(exc, "warnings", None)
                 warning_lines = (
                     [str(item) for item in warnings] if isinstance(warnings, list) else []
@@ -710,14 +750,19 @@ class ViewerStore:
                     warnings=warning_lines,
                     compile_level=target,
                     validation_level=validation_level,
+                    model_path=model_path,
                     fingerprint_inputs=fingerprint_inputs,
+                    materialization_summary=build_materialization_summary(self.repo, record_id),
+                    compile_elapsed_seconds=compile_elapsed_seconds,
                     checks_run=checks_run,
                 )
                 raise RuntimeError(f"Failed to compile assets for {record_id}: {exc}") from exc
 
+            compile_elapsed_seconds = time.perf_counter() - compile_started_at
             self.repo.write_text(urdf_path, compile_result.urdf_xml)
             self._promote_local_materialization_outputs(record_id, record_dir=record_dir)
             warning_lines = [str(item) for item in compile_result.warnings]
+            materialization_summary = build_materialization_summary(self.repo, record_id)
             self._write_compile_report(
                 record_id=record_id,
                 compile_path=compile_path,
@@ -725,10 +770,13 @@ class ViewerStore:
                 warnings=warning_lines,
                 compile_level=target,
                 validation_level=validation_level,
+                model_path=model_path,
                 fingerprint_inputs=fingerprint_inputs,
+                materialization_summary=materialization_summary,
+                compile_elapsed_seconds=compile_elapsed_seconds,
                 checks_run=checks_run,
             )
-            materialization_status = self._materialization_status_for_record(record_id)
+            materialization_status = str(materialization_summary["materialization_status"])
             return MaterializeRecordAssetsResult(
                 record_id=record_id,
                 status="compiled",

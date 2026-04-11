@@ -17,7 +17,8 @@ When a `just` recipe supports optional settings, pass them as overrides before t
 - `uv run --group dev pytest -q` runs the current smoke-test suite.
 - `just setup` handles first-time repo setup and storage initialization.
 - `just smoke-tests` runs the smoke-test suite.
-- `just compile-all` is the recommended path before `just viewer`; it materializes the saved-record artifacts used by the viewer.
+- `just compile-all` is the recommended path before `just viewer`; it now uses the faster visual-only bulk materialization path for viewer assets.
+- `just compile-all-full` runs the non-strict full bulk compile path when you need collision-inclusive URDFs without the validation-heavy strict checks.
 - `just compile-all-strict` runs the validation-heavy full compile path.
 - `just name=<batch-id> batch-spec-new` creates `data/batch_specs/<batch-id>.csv` with the canonical batch CSV header.
 - `just concurrency=8 dataset-batch data/batch_specs/<batch-id>.csv` runs the dataset batch shortcut; batch row provider/model settings come from the CSV.

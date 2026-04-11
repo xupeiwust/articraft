@@ -24,6 +24,7 @@ from scripts.compile_all_records import (
 from storage.materialize import (
     build_compile_fingerprint_from_inputs,
     build_compile_fingerprint_inputs,
+    build_model_source_snapshot,
 )
 from storage.repo import StorageRepo
 
@@ -751,3 +752,57 @@ def test_collect_candidates_queues_records_when_compile_inputs_change(tmp_path) 
     assert len(candidates) == 1
     assert candidates[0].record_id == record_id
     assert candidates[0].reason == "compile inputs changed"
+
+
+def test_collect_candidates_uses_cached_model_source_snapshot_to_skip_rehash(
+    tmp_path, monkeypatch
+) -> None:
+    repo = StorageRepo(tmp_path)
+    repo.ensure_layout()
+
+    record_id = "rec_snapshot_fast_path"
+    record_dir = repo.layout.record_dir(record_id)
+    record_dir.mkdir(parents=True, exist_ok=True)
+    materialization_dir = repo.layout.record_materialization_dir(record_id)
+    materialization_dir.mkdir(parents=True, exist_ok=True)
+    model_path = record_dir / "model.py"
+    model_path.write_text("object_model = None\n", encoding="utf-8")
+    fingerprint_inputs = build_compile_fingerprint_inputs(model_path=model_path)
+    (materialization_dir / "model.urdf").write_text(
+        "<robot name='primitive'><link name='base'><visual><geometry><box size='1 1 1'/></geometry></visual></link></robot>",
+        encoding="utf-8",
+    )
+    (record_dir / "record.json").write_text(
+        json.dumps({"artifacts": {"model_py": "model.py"}}),
+        encoding="utf-8",
+    )
+    (materialization_dir / "compile_report.json").write_text(
+        json.dumps(
+            {
+                "status": "success",
+                "metrics": {
+                    "compile_level": "full",
+                    "fingerprint_inputs": fingerprint_inputs,
+                    "materialization_fingerprint": build_compile_fingerprint_from_inputs(
+                        fingerprint_inputs
+                    ),
+                    **build_model_source_snapshot(model_path=model_path),
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    def _unexpected_hash(**kwargs):
+        raise AssertionError(
+            "build_compile_fingerprint_inputs should not run for unchanged sources"
+        )
+
+    monkeypatch.setattr(
+        "scripts.compile_all_records.build_compile_fingerprint_inputs", _unexpected_hash
+    )
+
+    candidates, skipped_missing_script = _collect_candidates(tmp_path, force=False, target="full")
+
+    assert skipped_missing_script == 0
+    assert candidates == []

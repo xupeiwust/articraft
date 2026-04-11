@@ -41,8 +41,10 @@ from agent.open_file_limits import (
 from storage.materialize import (
     build_compile_fingerprint_from_inputs,
     build_compile_fingerprint_inputs,
+    compile_report_elapsed_seconds,
+    compile_report_matches_model_source_snapshot,
+    compile_report_visual_mesh_footprint,
     infer_materialization_status,
-    materialization_paths,
     urdf_references_external_meshes,
 )
 from storage.repo import StorageRepo
@@ -77,6 +79,7 @@ class CompileCandidate:
     record_id: str
     reason: str
     force: bool = False
+    estimated_compile_seconds: float = 0.0
     estimated_mesh_bytes: int = 0
     mesh_file_count: int = 0
     sdk_package: str = "sdk"
@@ -137,43 +140,23 @@ def _compile_fingerprint(payload: object) -> str | None:
     return str(value) if isinstance(value, str) and value else None
 
 
-def _estimate_visual_mesh_footprint(repo: StorageRepo, record_id: str) -> tuple[int, int]:
-    mesh_root = repo.layout.record_materialization_asset_meshes_dir(record_id)
-    if not mesh_root.exists():
-        return 0, 0
-
-    total_bytes = 0
-    mesh_files = 0
-    for path in mesh_root.rglob("*.obj"):
-        try:
-            rel_parts = path.relative_to(mesh_root).parts
-        except ValueError:
-            rel_parts = ()
-        if rel_parts and rel_parts[0] == "collision":
-            continue
-        try:
-            total_bytes += path.stat().st_size
-            mesh_files += 1
-        except OSError:
-            continue
-    return total_bytes, mesh_files
-
-
 def _make_candidate(
-    repo: StorageRepo,
     *,
     record_id: str,
     reason: str,
     force: bool,
     sdk_package: str,
+    compile_report: object | None = None,
 ) -> CompileCandidate:
-    estimated_mesh_bytes, mesh_file_count = _estimate_visual_mesh_footprint(repo, record_id)
+    estimated_mesh_bytes, mesh_file_count = compile_report_visual_mesh_footprint(compile_report)
+    estimated_compile_seconds = compile_report_elapsed_seconds(compile_report) or 0.0
     return CompileCandidate(
         record_id=record_id,
         reason=reason,
         force=force,
-        estimated_mesh_bytes=estimated_mesh_bytes,
-        mesh_file_count=mesh_file_count,
+        estimated_compile_seconds=estimated_compile_seconds,
+        estimated_mesh_bytes=estimated_mesh_bytes or 0,
+        mesh_file_count=mesh_file_count or 0,
         sdk_package=sdk_package,
     )
 
@@ -231,13 +214,14 @@ def _collect_candidates(
 
     for record_dir in sorted(path for path in records_root.iterdir() if path.is_dir()):
         record_id = record_dir.name
-        record = repo.read_json(repo.layout.record_metadata_path(record_id))
+        record = repo.read_json(record_dir / "record.json")
         sdk_package = _normalize_sdk_package(
             record.get("sdk_package") if isinstance(record, dict) else "sdk"
         )
         script_path = _record_model_script_path(repo, record_id, record)
-        urdf_path = materialization_paths(repo, record_id)["model_urdf"]
-        compile_report_path = materialization_paths(repo, record_id)["compile_report_json"]
+        materialization_dir = repo.layout.record_materialization_dir(record_id)
+        urdf_path = materialization_dir / "model.urdf"
+        compile_report_path = materialization_dir / "compile_report.json"
         compile_report = repo.read_json(compile_report_path)
         compile_status = _compile_status(compile_report)
         compile_level = _compile_level(compile_report)
@@ -247,11 +231,11 @@ def _collect_candidates(
             if isinstance(record, dict) or compile_status is not None or urdf_path.exists():
                 candidates.append(
                     _make_candidate(
-                        repo,
                         record_id=record_id,
                         reason="missing model.py",
                         force=False,
                         sdk_package=sdk_package,
+                        compile_report=compile_report,
                     )
                 )
                 continue
@@ -261,11 +245,36 @@ def _collect_candidates(
         if force:
             candidates.append(
                 _make_candidate(
-                    repo,
                     record_id=record_id,
                     reason="forced",
                     force=True,
                     sdk_package=sdk_package,
+                    compile_report=compile_report,
+                )
+            )
+            continue
+
+        if not urdf_path.exists():
+            candidates.append(
+                _make_candidate(
+                    record_id=record_id,
+                    reason="missing model.urdf",
+                    force=False,
+                    sdk_package=sdk_package,
+                    compile_report=compile_report,
+                )
+            )
+            continue
+
+        if compile_status != "success":
+            label = compile_status or "unknown"
+            candidates.append(
+                _make_candidate(
+                    record_id=record_id,
+                    reason=f"compile status is {label}",
+                    force=True,
+                    sdk_package=sdk_package,
+                    compile_report=compile_report,
                 )
             )
             continue
@@ -276,54 +285,35 @@ def _collect_candidates(
             urdf_path=urdf_path,
         )
 
-        if not urdf_path.exists():
-            candidates.append(
-                _make_candidate(
-                    repo,
-                    record_id=record_id,
-                    reason="missing model.urdf",
-                    force=False,
-                    sdk_package=sdk_package,
-                )
-            )
-            continue
-
         if materialization_status == "missing":
             candidates.append(
                 _make_candidate(
-                    repo,
                     record_id=record_id,
                     reason="missing generated assets",
                     force=False,
                     sdk_package=sdk_package,
+                    compile_report=compile_report,
                 )
             )
             continue
 
-        if compile_status != "success":
-            label = compile_status or "unknown"
-            candidates.append(
-                _make_candidate(
-                    repo,
-                    record_id=record_id,
-                    reason=f"compile status is {label}",
-                    force=True,
-                    sdk_package=sdk_package,
-                )
+        if compile_fingerprint and compile_report_matches_model_source_snapshot(
+            compile_report,
+            model_path=script_path,
+        ):
+            current_fingerprint = compile_fingerprint
+        else:
+            current_fingerprint = build_compile_fingerprint_from_inputs(
+                build_compile_fingerprint_inputs(model_path=script_path)
             )
-            continue
-
-        current_fingerprint = build_compile_fingerprint_from_inputs(
-            build_compile_fingerprint_inputs(model_path=script_path)
-        )
         if compile_fingerprint != current_fingerprint:
             candidates.append(
                 _make_candidate(
-                    repo,
                     record_id=record_id,
                     reason="compile inputs changed",
                     force=True,
                     sdk_package=sdk_package,
+                    compile_report=compile_report,
                 )
             )
             continue
@@ -331,11 +321,11 @@ def _collect_candidates(
         if target_key == "full" and compile_level != "full":
             candidates.append(
                 _make_candidate(
-                    repo,
                     record_id=record_id,
                     reason="compile level is visual",
                     force=True,
                     sdk_package=sdk_package,
+                    compile_report=compile_report,
                 )
             )
 
@@ -346,11 +336,11 @@ def _sort_candidates_for_compile(candidates: list[CompileCandidate]) -> list[Com
     return sorted(
         candidates,
         key=lambda candidate: (
-            candidate.estimated_mesh_bytes,
-            candidate.mesh_file_count,
+            -candidate.estimated_compile_seconds,
+            -candidate.estimated_mesh_bytes,
+            -candidate.mesh_file_count,
             candidate.record_id,
         ),
-        reverse=True,
     )
 
 

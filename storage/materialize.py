@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -60,6 +61,63 @@ def build_compile_fingerprint_from_inputs(
         sdk_fingerprint=str(sdk_fingerprint) if isinstance(sdk_fingerprint, str) else None,
         materializer_version=materializer_version,
     )
+
+
+def build_model_source_snapshot(*, model_path: Path) -> dict[str, int]:
+    stat = model_path.stat()
+    return {
+        "model_py_mtime_ns": int(stat.st_mtime_ns),
+        "model_py_size_bytes": int(stat.st_size),
+    }
+
+
+def _compile_report_metrics(report: object) -> dict[str, Any] | None:
+    if not isinstance(report, dict):
+        return None
+    metrics = report.get("metrics")
+    return metrics if isinstance(metrics, dict) else None
+
+
+def compile_report_matches_model_source_snapshot(
+    report: object,
+    *,
+    model_path: Path,
+) -> bool | None:
+    metrics = _compile_report_metrics(report)
+    if metrics is None:
+        return None
+    expected_mtime_ns = metrics.get("model_py_mtime_ns")
+    expected_size_bytes = metrics.get("model_py_size_bytes")
+    if not isinstance(expected_mtime_ns, int) or not isinstance(expected_size_bytes, int):
+        return None
+    try:
+        stat = model_path.stat()
+    except OSError:
+        return None
+    return int(stat.st_mtime_ns) == expected_mtime_ns and int(stat.st_size) == expected_size_bytes
+
+
+def compile_report_visual_mesh_footprint(report: object) -> tuple[int | None, int | None]:
+    metrics = _compile_report_metrics(report)
+    if metrics is None:
+        return None, None
+    mesh_bytes = metrics.get("visual_mesh_bytes")
+    mesh_files = metrics.get("visual_mesh_file_count")
+    if not isinstance(mesh_bytes, int) or mesh_bytes < 0:
+        mesh_bytes = None
+    if not isinstance(mesh_files, int) or mesh_files < 0:
+        mesh_files = None
+    return mesh_bytes, mesh_files
+
+
+def compile_report_elapsed_seconds(report: object) -> float | None:
+    metrics = _compile_report_metrics(report)
+    if metrics is None:
+        return None
+    value = metrics.get("compile_elapsed_seconds")
+    if isinstance(value, (int, float)) and value >= 0:
+        return float(value)
+    return None
 
 
 @dataclass(slots=True)
@@ -136,6 +194,53 @@ def ensure_record_artifacts_exist(
 
 def _has_nonempty_dir(path: Path) -> bool:
     return path.exists() and path.is_dir() and any(path.iterdir())
+
+
+def summarize_visual_mesh_footprint(mesh_root: Path) -> tuple[int, int]:
+    if not mesh_root.exists() or not mesh_root.is_dir():
+        return 0, 0
+
+    total_bytes = 0
+    mesh_files = 0
+    for dirpath, dirnames, filenames in os.walk(mesh_root):
+        rel_parts = Path(dirpath).relative_to(mesh_root).parts
+        if rel_parts and rel_parts[0] == "collision":
+            dirnames[:] = []
+            continue
+        for filename in filenames:
+            if not filename.lower().endswith(".obj"):
+                continue
+            path = Path(dirpath) / filename
+            try:
+                total_bytes += path.stat().st_size
+                mesh_files += 1
+            except OSError:
+                continue
+    return total_bytes, mesh_files
+
+
+def build_materialization_summary(repo: StorageRepo, record_id: str) -> dict[str, Any]:
+    paths = materialization_paths(repo, record_id)
+    mesh_bytes, mesh_file_count = summarize_visual_mesh_footprint(paths["meshes_dir"])
+
+    has_materialized_assets = mesh_file_count > 0
+    if not has_materialized_assets:
+        has_materialized_assets = _has_nonempty_dir(paths["glb_dir"]) or _has_nonempty_dir(
+            paths["viewer_dir"]
+        )
+
+    if has_materialized_assets:
+        materialization_status: MaterializationStatus = "available"
+    elif paths["model_urdf"].exists() and not urdf_references_external_meshes(paths["model_urdf"]):
+        materialization_status = "available"
+    else:
+        materialization_status = "missing"
+
+    return {
+        "materialization_status": materialization_status,
+        "visual_mesh_bytes": mesh_bytes,
+        "visual_mesh_file_count": mesh_file_count,
+    }
 
 
 def record_has_materialized_assets(repo: StorageRepo, record_id: str) -> bool:

@@ -21,7 +21,8 @@ uv run uvicorn viewer.api.app:app --reload --host 127.0.0.1 --port 8765  # Start
 
 just setup                     # First-time setup shortcut
 just smoke-tests               # Run pytest suite
-just compile-all               # Materialize saved-record artifacts for viewer browsing
+just compile-all               # Fast visual-only materialization for viewer browsing
+just compile-all-full          # Non-strict full bulk compile with collision-inclusive URDFs
 just compile-all-strict        # Full path with validation-heavy geometry checks
 just name=<batch-id> batch-spec-new   # Create an empty tracked batch CSV with the canonical header
 just spec=data/batch_specs/<batch-id>.csv concurrency=8 dataset-batch  # Run a tracked dataset batch CSV
@@ -118,6 +119,7 @@ The API (`viewer/api/app.py`) is a FastAPI app that serves both the REST API and
 ### Viewer compile guidance
 
 - For viewer-first inspection, run `just compile-all` before `just viewer`.
+- Use `just compile-all-full` when you want non-strict full URDFs in bulk.
 - Use `just compile-all-strict` when you need the validation-heavy full compile path.
 - For one-off records, use `just compile data/records/<id>`.
 

@@ -673,7 +673,7 @@ unroll-all-trajectories:
 compile-all:
     #!/usr/bin/env bash
     set -euo pipefail
-    cmd=(uv run python scripts/compile_all_records.py --repo-root . --concurrency {{ quote(concurrency) }})
+    cmd=(uv run python scripts/compile_all_records.py --repo-root . --target visual --concurrency {{ quote(concurrency) }})
     if [ -n {{ quote(limit) }} ]; then
       cmd+=(--limit {{ quote(limit) }})
     fi
@@ -682,7 +682,25 @@ compile-all:
 force-compile-all:
     #!/usr/bin/env bash
     set -euo pipefail
-    cmd=(uv run python scripts/compile_all_records.py --repo-root . --force --concurrency {{ quote(concurrency) }})
+    cmd=(uv run python scripts/compile_all_records.py --repo-root . --target visual --force --concurrency {{ quote(concurrency) }})
+    if [ -n {{ quote(limit) }} ]; then
+      cmd+=(--limit {{ quote(limit) }})
+    fi
+    exec "${cmd[@]}"
+
+compile-all-full:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cmd=(uv run python scripts/compile_all_records.py --repo-root . --target full --concurrency {{ quote(concurrency) }})
+    if [ -n {{ quote(limit) }} ]; then
+      cmd+=(--limit {{ quote(limit) }})
+    fi
+    exec "${cmd[@]}"
+
+force-compile-all-full:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cmd=(uv run python scripts/compile_all_records.py --repo-root . --target full --force --concurrency {{ quote(concurrency) }})
     if [ -n {{ quote(limit) }} ]; then
       cmd+=(--limit {{ quote(limit) }})
     fi
@@ -691,7 +709,7 @@ force-compile-all:
 compile-all-strict:
     #!/usr/bin/env bash
     set -euo pipefail
-    cmd=(uv run python scripts/compile_all_records.py --repo-root . --strict --concurrency {{ quote(concurrency) }})
+    cmd=(uv run python scripts/compile_all_records.py --repo-root . --target full --strict --concurrency {{ quote(concurrency) }})
     if [ -n {{ quote(limit) }} ]; then
       cmd+=(--limit {{ quote(limit) }})
     fi
