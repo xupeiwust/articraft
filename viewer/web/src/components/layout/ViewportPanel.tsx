@@ -18,6 +18,14 @@ interface ViewportPanelProps {
     loading: boolean;
     error: string | null;
     missingArtifacts: boolean;
+    collisionGeometryState: {
+      declaredCount: number;
+      primitiveCount: number;
+      meshCount: number;
+      loadedMeshCount: number;
+      failedMeshCount: number;
+      loading: boolean;
+    };
   }) => void;
   overlayNotice?: ReactNode;
   disabledOverlay?: ReactNode;

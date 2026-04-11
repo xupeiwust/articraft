@@ -33,7 +33,26 @@ export interface UrdfLoaderState {
   jointFrames: Map<string, THREE.Group> | null;
   loading: boolean;
   error: string | null;
+  collisionGeometryState: CollisionGeometryState;
 }
+
+export interface CollisionGeometryState {
+  declaredCount: number;
+  primitiveCount: number;
+  meshCount: number;
+  loadedMeshCount: number;
+  failedMeshCount: number;
+  loading: boolean;
+}
+
+const EMPTY_COLLISION_GEOMETRY_STATE: CollisionGeometryState = {
+  declaredCount: 0,
+  primitiveCount: 0,
+  meshCount: 0,
+  loadedMeshCount: 0,
+  failedMeshCount: 0,
+  loading: false,
+};
 
 function syncLoadedMeshVisibility(root: THREE.Object3D, showCollisionMeshes: boolean): void {
   root.traverse((child) => {
@@ -74,6 +93,9 @@ export function useUrdfLoader(
   const [jointFrames, setJointFrames] = useState<Map<string, THREE.Group> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [collisionGeometryState, setCollisionGeometryState] = useState<CollisionGeometryState>(
+    EMPTY_COLLISION_GEOMETRY_STATE,
+  );
 
   // Track the current robot group so we can remove it when swapping models.
   const robotGroupRef = useRef<THREE.Group | null>(null);
@@ -88,7 +110,9 @@ export function useUrdfLoader(
       setUrdfSpec(null);
       setJointNodes(null);
       setJointFrames(null);
+      setLoading(false);
       setError(null);
+      setCollisionGeometryState(EMPTY_COLLISION_GEOMETRY_STATE);
       return;
     }
 
@@ -101,6 +125,7 @@ export function useUrdfLoader(
       specRef.current = null;
       collisionMeshesLoadedKeyRef.current = null;
       collisionMeshesLoadingKeyRef.current = null;
+      setCollisionGeometryState(EMPTY_COLLISION_GEOMETRY_STATE);
 
       try {
         // 1. Fetch URDF text.
@@ -121,6 +146,26 @@ export function useUrdfLoader(
         // 2. Parse and rewrite mesh filenames.
         const rawSpec = parseUrdf(urdfXml);
         const spec = rewriteAbsoluteMeshFilenames(rawSpec);
+        const declaredCollisionCount = spec.links.reduce(
+          (total, link) => total + link.collisions.length,
+          0,
+        );
+        const meshCollisionCount = spec.links.reduce(
+          (total, link) =>
+            total + link.collisions.filter((collision) => collision.geometry.type === 'mesh').length,
+          0,
+        );
+        const primitiveCollisionCount = declaredCollisionCount - meshCollisionCount;
+        if (!cancelled) {
+          setCollisionGeometryState({
+            declaredCount: declaredCollisionCount,
+            primitiveCount: primitiveCollisionCount,
+            meshCount: meshCollisionCount,
+            loadedMeshCount: 0,
+            failedMeshCount: 0,
+            loading: meshCollisionCount > 0,
+          });
+        }
 
         // 3. Build scene graph.
         const { root, jointNodes: joints, jointFrames: frames, linkNodes } = buildRobotSceneGraph(spec, { showCollisions: true });
@@ -179,6 +224,7 @@ export function useUrdfLoader(
           setUrdfSpec(null);
           setJointNodes(null);
           setJointFrames(null);
+          setCollisionGeometryState(EMPTY_COLLISION_GEOMETRY_STATE);
         }
       } finally {
         if (!cancelled) {
@@ -196,7 +242,7 @@ export function useUrdfLoader(
 
   useEffect(() => {
     const assetKey = baseFileUrl ? `${baseFileUrl}|${assetRevisionKey ?? ''}` : null;
-    if (!showCollisionMeshes || !assetKey) {
+    if (!assetKey) {
       return;
     }
     const baseUrl = baseFileUrl;
@@ -206,23 +252,42 @@ export function useUrdfLoader(
     if (!spec || !linkNodes || !baseUrl) {
       return;
     }
+    const meshCollisionCount = spec.links.reduce(
+      (total, link) =>
+        total + link.collisions.filter((collision) => collision.geometry.type === 'mesh').length,
+      0,
+    );
+    if (meshCollisionCount === 0) {
+      return;
+    }
     if (collisionMeshesLoadedKeyRef.current === assetKey || collisionMeshesLoadingKeyRef.current === assetKey) {
       return;
     }
 
     let cancelled = false;
     collisionMeshesLoadingKeyRef.current = assetKey;
+    setCollisionGeometryState((current) => ({
+      ...current,
+      loading: true,
+      failedMeshCount: 0,
+    }));
 
     void attachCollisionMeshGeometry(spec, linkNodes, baseUrl, assetRevisionKey)
-      .then(() => {
+      .then(({ loadedCount, failedCount }) => {
         if (cancelled || collisionMeshesLoadingKeyRef.current !== assetKey) {
           return;
         }
         for (const linkGroup of linkNodes.values()) {
-          syncLoadedMeshVisibility(linkGroup, true);
+          syncLoadedMeshVisibility(linkGroup, showCollisionMeshes);
         }
         collisionMeshesLoadingKeyRef.current = null;
         collisionMeshesLoadedKeyRef.current = assetKey;
+        setCollisionGeometryState((current) => ({
+          ...current,
+          loadedMeshCount: loadedCount,
+          failedMeshCount: failedCount,
+          loading: false,
+        }));
         invalidate();
       })
       .catch(() => {
@@ -230,6 +295,13 @@ export function useUrdfLoader(
           return;
         }
         collisionMeshesLoadingKeyRef.current = null;
+        collisionMeshesLoadedKeyRef.current = assetKey;
+        setCollisionGeometryState((current) => ({
+          ...current,
+          loadedMeshCount: 0,
+          failedMeshCount: current.meshCount,
+          loading: false,
+        }));
       });
 
     return () => {
@@ -268,7 +340,7 @@ export function useUrdfLoader(
     invalidate();
   }, [camera, urdfSpec, gridGroup, axisGroup, jointPoseSignal, invalidate]);
 
-  return { urdfSpec, jointNodes, jointFrames, loading, error };
+  return { urdfSpec, jointNodes, jointFrames, loading, error, collisionGeometryState };
 }
 
 async function attachVisualMeshGeometry(
@@ -324,7 +396,7 @@ async function attachCollisionMeshGeometry(
   linkNodes: Map<string, THREE.Group>,
   baseUrl: string,
   assetRevisionKey: string | null,
-): Promise<void> {
+): Promise<{ loadedCount: number; failedCount: number }> {
   const pending: Array<Promise<void>> = [];
   let collisionIndex = 0;
 
@@ -372,7 +444,12 @@ async function attachCollisionMeshGeometry(
     }
   }
 
-  await Promise.all(pending);
+  const settled = await Promise.allSettled(pending);
+  const loadedCount = settled.filter((result) => result.status === 'fulfilled').length;
+  return {
+    loadedCount,
+    failedCount: settled.length - loadedCount,
+  };
 }
 
 /**

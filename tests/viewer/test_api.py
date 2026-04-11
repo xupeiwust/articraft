@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -83,6 +84,69 @@ def test_viewer_store_staging_listing_avoids_recursive_tree_scan(
     assert len(entries) == 1
     assert entries[0].record_id == "rec_stage_001"
     assert entries[0].updated_at is not None
+
+
+def test_viewer_store_bootstrap_avoids_recursive_asset_scan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = StorageRepo(tmp_path)
+    repo.ensure_layout()
+
+    RecordStore(repo).write_record(
+        Record(
+            schema_version=1,
+            record_id="rec_bootstrap_001",
+            created_at="2026-03-18T08:00:00Z",
+            updated_at="2026-03-18T08:00:00Z",
+            rating=None,
+            kind="generated_model",
+            prompt_kind="single_prompt",
+            category_slug=None,
+            source=SourceRef(run_id="run_bootstrap_001"),
+            sdk_package="sdk",
+            provider="openai",
+            model_id="gpt-5.4",
+            display=DisplayMetadata(
+                title="Bootstrap record",
+                prompt_preview="bootstrap prompt",
+            ),
+            artifacts=RecordArtifacts(
+                prompt_txt="prompt.txt",
+                prompt_series_json=None,
+                model_py="model.py",
+                provenance_json="provenance.json",
+                cost_json=None,
+            ),
+            collections=["workbench"],
+        )
+    )
+    CollectionStore(repo).append_workbench_entry(
+        record_id="rec_bootstrap_001",
+        added_at="2026-03-18T08:01:00Z",
+    )
+    repo.write_json(
+        repo.layout.record_materialization_compile_report_path("rec_bootstrap_001"),
+        {
+            "schema_version": 1,
+            "record_id": "rec_bootstrap_001",
+            "status": "success",
+            "metrics": {"compile_level": "full"},
+        },
+    )
+    meshes_dir = repo.layout.record_materialization_asset_meshes_dir("rec_bootstrap_001")
+    meshes_dir.mkdir(parents=True, exist_ok=True)
+    (meshes_dir / "part.obj").write_text("o tri\n", encoding="utf-8")
+
+    def fail_rglob(self: Path, pattern: str):  # pragma: no cover - assertion helper
+        raise AssertionError(f"unexpected recursive scan of {self} with {pattern}")
+
+    monkeypatch.setattr(Path, "rglob", fail_rglob)
+
+    bootstrap = ViewerStore(tmp_path, ensure_search_index=False).bootstrap()
+
+    assert len(bootstrap.workbench_entries) == 1
+    assert bootstrap.workbench_entries[0].record is not None
+    assert bootstrap.workbench_entries[0].record.viewer_asset_updated_at is not None
 
 
 def test_viewer_store_delete_record_removes_empty_ad_hoc_category(tmp_path: Path) -> None:
@@ -227,6 +291,8 @@ def test_effective_rating_filter_uses_bucket_ranges() -> None:
 
 def test_viewer_api_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_dataset_tokens(monkeypatch, "0001")
+    fixed_now = datetime(2026, 4, 11, 0, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr("viewer.api.store.time.time", lambda: fixed_now.timestamp())
     repo_root = tmp_path
     repo = StorageRepo(repo_root)
     repo.ensure_layout()
@@ -576,6 +642,16 @@ def test_viewer_api_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     assert dataset_browse["facets"]["sdk_packages"] == ["sdk"]
     assert dataset_browse["facets"]["authors"] == ["RuiningLi", "mattzh72"]
 
+    dataset_browse_in_window = client.get(
+        "/api/records/browse?source=dataset&time_from=30d&time_to=14d"
+    ).json()
+    assert dataset_browse_in_window["record_ids"] == ["rec_dj_001", "rec_001"]
+
+    dataset_browse_too_recent = client.get(
+        "/api/records/browse?source=dataset&time_from=14d"
+    ).json()
+    assert dataset_browse_too_recent["record_ids"] == []
+
     record_summary = client.get("/api/records/rec_001/summary").json()
     assert record_summary["record_id"] == "rec_001"
     assert record_summary["viewer_asset_updated_at"] is not None
@@ -645,6 +721,16 @@ def test_viewer_api_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         "/api/records/search?q=dj&source=dataset&category=hinges&category=dj_equipment"
     ).json()
     assert [item["record_id"] for item in multi_category_search] == ["rec_dj_001"]
+
+    dataset_time_window_search = client.get(
+        "/api/records/search?q=dj&source=dataset&time_from=30d&time_to=14d"
+    ).json()
+    assert [item["record_id"] for item in dataset_time_window_search] == ["rec_dj_001"]
+
+    dataset_too_old_search = client.get(
+        "/api/records/search?q=dj&source=dataset&time_to=30d"
+    ).json()
+    assert dataset_too_old_search == []
 
     cost_range_search = client.get(
         "/api/records/search?q=hinge&source=workbench&cost_min=0.04&cost_max=0.06"

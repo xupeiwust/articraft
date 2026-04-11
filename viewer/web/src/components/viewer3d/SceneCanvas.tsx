@@ -309,6 +309,14 @@ export interface SceneCanvasProps {
     loading: boolean;
     error: string | null;
     missingArtifacts: boolean;
+    collisionGeometryState: {
+      declaredCount: number;
+      primitiveCount: number;
+      meshCount: number;
+      loadedMeshCount: number;
+      failedMeshCount: number;
+      loading: boolean;
+    };
   }) => void;
 }
 
@@ -345,7 +353,7 @@ export function SceneCanvas({
       continuousRender: renderOptions.autoAnimate,
     },
   );
-  const { urdfSpec, jointNodes, jointFrames, loading, error } = useUrdfLoader(
+  const { urdfSpec, jointNodes, jointFrames, loading, error, collisionGeometryState } = useUrdfLoader(
     baseFileUrl,
     assetRevisionKey,
     jointPoseSignal,
@@ -404,8 +412,9 @@ export function SceneCanvas({
       loading,
       error,
       missingArtifacts: isMissingArtifactsError(error),
+      collisionGeometryState,
     });
-  }, [error, loading, onLoadStateChange]);
+  }, [collisionGeometryState, error, loading, onLoadStateChange]);
 
   useEffect(() => {
     setSelectedPartSelection(null);

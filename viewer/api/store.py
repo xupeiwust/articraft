@@ -227,26 +227,32 @@ def _within_dashboard_stars_filter(
     return True
 
 
-def _within_time_filter(created_at: str | None, filter_value: str | None) -> bool:
-    if filter_value in {None, "", "any"}:
+def _normalize_time_filter_value(value: str | None) -> str | None:
+    if value in {None, "", "any"}:
+        return None
+    return value
+
+
+def _within_time_filter(
+    created_at: str | None,
+    *,
+    oldest: str | None = None,
+    newest: str | None = None,
+) -> bool:
+    normalized_oldest = _normalize_time_filter_value(oldest)
+    normalized_newest = _normalize_time_filter_value(newest)
+    if normalized_oldest is None and normalized_newest is None:
         return True
     if not created_at:
         return False
-    try:
-        created_at_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-    except ValueError:
-        return False
-    thresholds = {
-        "24h": 24 * 60 * 60,
-        "7d": 7 * 24 * 60 * 60,
-        "30d": 30 * 24 * 60 * 60,
-        "90d": 90 * 24 * 60 * 60,
-    }
-    seconds = thresholds.get(filter_value)
-    if seconds is None:
-        return True
-    now = datetime.now(timezone.utc)
-    return (now - created_at_dt).total_seconds() <= seconds
+
+    now_ms = int(time.time() * 1000)
+    return _within_dashboard_time_filter(
+        created_at,
+        oldest=normalized_oldest,
+        newest=normalized_newest,
+        now_ms=now_ms,
+    )
 
 
 def _within_cost_filter(
@@ -321,25 +327,19 @@ def _file_mtime_to_utc(path: Path) -> str | None:
         return None
 
 
-def _latest_tree_mtime_to_utc(paths: list[Path], fallback: str | None = None) -> str | None:
+def _latest_path_mtime_to_utc(paths: list[Path], fallback: str | None = None) -> str | None:
     latest_mtime: float | None = None
 
-    for root in paths:
-        candidates: list[Path]
-        if root.is_file():
-            candidates = [root]
-        elif root.is_dir():
-            candidates = [root, *root.rglob("*")]
-        else:
+    for path in paths:
+        if not path.exists():
             continue
 
-        for candidate in candidates:
-            try:
-                stat = candidate.stat()
-            except OSError:
-                continue
-            if latest_mtime is None or stat.st_mtime > latest_mtime:
-                latest_mtime = stat.st_mtime
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        if latest_mtime is None or stat.st_mtime > latest_mtime:
+            latest_mtime = stat.st_mtime
 
     if latest_mtime is None:
         return fallback
@@ -484,9 +484,11 @@ class ViewerStore:
 
     def _viewer_asset_updated_at_for_record(self, record_id: str) -> str | None:
         layout = self.repo.layout
-        return _latest_tree_mtime_to_utc(
+        return _latest_path_mtime_to_utc(
             [
                 layout.record_materialization_urdf_path(record_id),
+                layout.record_materialization_compile_report_path(record_id),
+                layout.record_materialization_assets_dir(record_id),
                 layout.record_materialization_asset_meshes_dir(record_id),
                 layout.record_materialization_asset_glb_dir(record_id),
                 layout.record_materialization_asset_viewer_dir(record_id),
@@ -1528,6 +1530,8 @@ class ViewerStore:
         query: str | None = None,
         run_id: str | None = None,
         time_filter: str | None = None,
+        time_filter_oldest: str | None = None,
+        time_filter_newest: str | None = None,
         model_filter: str | None = None,
         sdk_filter: str | None = None,
         author_filters: list[str] | None = None,
@@ -1545,6 +1549,10 @@ class ViewerStore:
         source_record_ids = self._source_record_ids(source_filter)
         source_total = len(source_record_ids)
         summary_cache: dict[str, RecordSummaryResponse | None] = {}
+        effective_time_filter_oldest = _normalize_time_filter_value(
+            time_filter_oldest
+        ) or _normalize_time_filter_value(time_filter)
+        effective_time_filter_newest = _normalize_time_filter_value(time_filter_newest)
 
         all_source_summaries = [
             summary
@@ -1625,7 +1633,11 @@ class ViewerStore:
                 continue
             if run_id and summary.run_id != run_id:
                 continue
-            if not _within_time_filter(summary.created_at, time_filter):
+            if not _within_time_filter(
+                summary.created_at,
+                oldest=effective_time_filter_oldest,
+                newest=effective_time_filter_newest,
+            ):
                 continue
             if model_filter and summary.model_id != model_filter:
                 continue
@@ -1987,6 +1999,8 @@ class ViewerStore:
         source_filter: str | None = None,
         run_id: str | None = None,
         time_filter: str | None = None,
+        time_filter_oldest: str | None = None,
+        time_filter_newest: str | None = None,
         model_filter: str | None = None,
         sdk_filter: str | None = None,
         author_filters: list[str] | None = None,
@@ -2001,6 +2015,10 @@ class ViewerStore:
             return []
         if cost_min is not None and cost_max is not None and cost_min > cost_max:
             cost_min, cost_max = cost_max, cost_min
+        effective_time_filter_oldest = _normalize_time_filter_value(
+            time_filter_oldest
+        ) or _normalize_time_filter_value(time_filter)
+        effective_time_filter_newest = _normalize_time_filter_value(time_filter_newest)
 
         record_ids = self.search.search_record_ids(
             query,
@@ -2013,7 +2031,11 @@ class ViewerStore:
             summary = self._record_summary(record_id)
             if summary is None:
                 continue
-            if not _within_time_filter(summary.created_at, time_filter):
+            if not _within_time_filter(
+                summary.created_at,
+                oldest=effective_time_filter_oldest,
+                newest=effective_time_filter_newest,
+            ):
                 continue
             if model_filter and summary.model_id != model_filter:
                 continue

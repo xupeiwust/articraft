@@ -45,6 +45,15 @@ type CollisionSupportState = {
   compileCommand: string | null;
 };
 
+const EMPTY_COLLISION_GEOMETRY_STATE = {
+  declaredCount: 0,
+  primitiveCount: 0,
+  meshCount: 0,
+  loadedMeshCount: 0,
+  failedMeshCount: 0,
+  loading: false,
+} as const;
+
 type PreviewJointMotion = {
   joint: UrdfJoint;
   cycleSeconds: number;
@@ -142,7 +151,11 @@ function syncJointPoseToUrl(recordId: string | null, jointValues: Map<string, nu
 }
 
 function isPreviewJoint(joint: UrdfJoint): boolean {
-  return joint.type === "revolute" || joint.type === "continuous" || joint.type === "prismatic";
+  const mimic = (joint as UrdfJoint & { mimic?: unknown }).mimic;
+  return (
+    !mimic
+    && (joint.type === "revolute" || joint.type === "continuous" || joint.type === "prismatic")
+  );
 }
 
 function buildRootLinks(joints: UrdfJoint[]): string[] {
@@ -292,10 +305,19 @@ export default function ViewerShell(): JSX.Element {
     loading: boolean;
     error: string | null;
     missingArtifacts: boolean;
+    collisionGeometryState: {
+      declaredCount: number;
+      primitiveCount: number;
+      meshCount: number;
+      loadedMeshCount: number;
+      failedMeshCount: number;
+      loading: boolean;
+    };
   }>({
     loading: false,
     error: null,
     missingArtifacts: false,
+    collisionGeometryState: EMPTY_COLLISION_GEOMETRY_STATE,
   });
   const inspectorPanelRef = useRef<PanelImperativeHandle | null>(null);
   const initialInspectorCollapsedRef = useRef(inspectorCollapsed);
@@ -482,12 +504,48 @@ export default function ViewerShell(): JSX.Element {
       return null;
     }
 
-    const collisionCount = urdfSpec.links.reduce((total, link) => total + link.collisions.length, 0);
-    if (collisionCount > 0) {
+    const {
+      declaredCount,
+      primitiveCount,
+      meshCount,
+      loadedMeshCount,
+      failedMeshCount,
+      loading: collisionLoading,
+    } = modelLoadState.collisionGeometryState;
+    const availableCollisionCount = primitiveCount + loadedMeshCount;
+
+    if (declaredCount === 0) {
+      const compileRecordId =
+        selection.kind === "record"
+          ? selection.recordId
+          : selectedStagingEntry?.persisted_record?.record_id ?? null;
+
+      return {
+        available: false,
+        summary: "No collision geometry in this URDF",
+        detail: "This asset currently shows visual meshes only.",
+        compileCommand: compileRecordId ? `just compile data/records/${compileRecordId}` : null,
+      };
+    }
+
+    if (collisionLoading && availableCollisionCount === 0) {
+      return {
+        available: false,
+        summary: "Loading collision geometry…",
+        detail: "The viewer is verifying collision meshes for this asset.",
+        compileCommand: null,
+      };
+    }
+
+    if (availableCollisionCount > 0) {
+      const hasPartialFailures = failedMeshCount > 0;
+      const totalAvailableCount = meshCount > 0 ? availableCollisionCount : declaredCount;
       return {
         available: true,
-        summary: `${collisionCount} collision ${collisionCount === 1 ? "mesh" : "meshes"} available`,
-        detail: "Collision geometry is available for this asset.",
+        summary: `${totalAvailableCount} collision ${totalAvailableCount === 1 ? "mesh" : "meshes"} available`,
+        detail: hasPartialFailures
+          ? "Some collision meshes are unavailable, but partial collision geometry is still loaded."
+          : "Collision geometry is available for this asset.",
         compileCommand: null,
       };
     }
@@ -499,11 +557,13 @@ export default function ViewerShell(): JSX.Element {
 
     return {
       available: false,
-      summary: "No collision geometry in this URDF",
-      detail: "This asset currently shows visual meshes only.",
+      summary: failedMeshCount > 0 ? "Collision meshes failed to load" : "No collision geometry in this URDF",
+      detail: failedMeshCount > 0
+        ? "The URDF references collision meshes, but the viewer could not load them from disk."
+        : "This asset currently shows visual meshes only.",
       compileCommand: compileRecordId ? `just compile data/records/${compileRecordId}` : null,
     };
-  }, [modelLoadState.error, modelLoadState.loading, selectedStagingEntry?.persisted_record?.record_id, selection, urdfSpec]);
+  }, [modelLoadState.collisionGeometryState, modelLoadState.error, modelLoadState.loading, selectedStagingEntry?.persisted_record?.record_id, selection, urdfSpec]);
 
   useEffect(() => {
     if (!collisionSupport || collisionSupport.available || !renderOptions.showCollisions) {
@@ -532,6 +592,7 @@ export default function ViewerShell(): JSX.Element {
       loading: false,
       error: null,
       missingArtifacts: false,
+      collisionGeometryState: EMPTY_COLLISION_GEOMETRY_STATE,
     });
   }, [selectionKey]);
 

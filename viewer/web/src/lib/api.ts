@@ -158,7 +158,10 @@ export async function browseRecords(params: {
     searchParams.set("run_id", params.runId);
   }
   if (params.timeFilter.oldest) {
-    searchParams.set("time", params.timeFilter.oldest);
+    searchParams.set("time_from", params.timeFilter.oldest);
+  }
+  if (params.timeFilter.newest) {
+    searchParams.set("time_to", params.timeFilter.newest);
   }
   if (params.modelFilter) {
     searchParams.set("model", params.modelFilter);
@@ -214,7 +217,10 @@ export async function searchRecords(params: {
     searchParams.set("run_id", params.runId);
   }
   if (params.timeFilter.oldest) {
-    searchParams.set("time", params.timeFilter.oldest);
+    searchParams.set("time_from", params.timeFilter.oldest);
+  }
+  if (params.timeFilter.newest) {
+    searchParams.set("time_to", params.timeFilter.newest);
   }
   if (params.modelFilter) {
     searchParams.set("model", params.modelFilter);

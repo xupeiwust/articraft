@@ -469,10 +469,74 @@ export function RecordList({
     sourceFilter,
   ]);
 
-  const visibleIds = useMemo(
-    () => (sourceFilter === "dataset" ? datasetRecordIds : workbenchRecords.map((record) => record.record_id)),
-    [datasetRecordIds, sourceFilter, workbenchRecords],
+  const recordForId = useCallback(
+    (recordId: string): RecordSummary | null => {
+      if (sourceFilter === "dataset") {
+        return recordCache[recordId] ?? datasetRecordsById[recordId] ?? null;
+      }
+      return workbenchRecordById.get(recordId) ?? recordCache[recordId] ?? null;
+    },
+    [datasetRecordsById, recordCache, sourceFilter, workbenchRecordById],
   );
+
+  const visibleIds = useMemo(() => {
+    if (sourceFilter !== "dataset") {
+      return workbenchRecords.map((record) => record.record_id);
+    }
+
+    return datasetRecordIds.filter((recordId) => {
+      const record = recordCache[recordId] ?? datasetRecordsById[recordId] ?? null;
+      if (!record) {
+        return true;
+      }
+      if (selectedRunId && record.run_id !== selectedRunId) {
+        return false;
+      }
+      if (!withinTimeFilter(record.created_at, timeFilter)) {
+        return false;
+      }
+      if (!withinCostFilter(record.total_cost_usd, costFilter)) {
+        return false;
+      }
+      if (!withinRatingFilter(record.effective_rating, ratingFilter)) {
+        return false;
+      }
+      if (!withinRatingFilter(record.secondary_rating, secondaryRatingFilter)) {
+        return false;
+      }
+      if (modelFilter && record.model_id !== modelFilter) {
+        return false;
+      }
+      if (sdkFilter && record.sdk_package !== sdkFilter) {
+        return false;
+      }
+      if (authorFilters.length > 0 && (!record.author || !authorFilters.includes(record.author))) {
+        return false;
+      }
+      if (
+        categoryFilters.length > 0
+        && (!record.category_slug || !categoryFilters.includes(record.category_slug))
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    authorFilters,
+    categoryFilters,
+    costFilter,
+    datasetRecordIds,
+    datasetRecordsById,
+    modelFilter,
+    ratingFilter,
+    recordCache,
+    sdkFilter,
+    secondaryRatingFilter,
+    selectedRunId,
+    sourceFilter,
+    timeFilter,
+    workbenchRecords,
+  ]);
 
   const counts = useMemo(
     () => ({
@@ -480,16 +544,6 @@ export function RecordList({
       total: sourceFilter === "dataset" ? datasetSourceTotal : workbenchSourceRecords.length,
     }),
     [datasetSourceTotal, sourceFilter, visibleIds.length, workbenchSourceRecords.length],
-  );
-
-  const recordForId = useCallback(
-    (recordId: string): RecordSummary | null => {
-      if (sourceFilter === "dataset") {
-        return datasetRecordsById[recordId] ?? recordCache[recordId] ?? null;
-      }
-      return workbenchRecordById.get(recordId) ?? recordCache[recordId] ?? null;
-    },
-    [datasetRecordsById, recordCache, sourceFilter, workbenchRecordById],
   );
 
   useEffect(() => {
