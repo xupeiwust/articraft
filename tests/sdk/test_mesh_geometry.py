@@ -161,6 +161,138 @@ def _build_blower_wheel_geometry(*, center: bool = True) -> sdk.MeshGeometry:
     )
 
 
+def _build_knob_geometry(*, center: bool = True) -> sdk.MeshGeometry:
+    return sdk.KnobGeometry(
+        0.042,
+        0.024,
+        body_style="skirted",
+        top_diameter=0.034,
+        skirt=sdk.KnobSkirt(0.052, 0.006, flare=0.08),
+        grip=sdk.KnobGrip(style="fluted", count=18, depth=0.0014),
+        indicator=sdk.KnobIndicator(
+            style="line",
+            mode="engraved",
+            depth=0.0008,
+            angle_deg=20.0,
+        ),
+        bore=sdk.KnobBore(style="d_shaft", diameter=0.006, flat_depth=0.001),
+        center=center,
+    )
+
+
+def _build_bezel_geometry(*, center: bool = True) -> sdk.MeshGeometry:
+    return sdk.BezelGeometry(
+        (0.080, 0.050),
+        (0.110, 0.080),
+        0.012,
+        opening_shape="rounded_rect",
+        outer_shape="rounded_rect",
+        opening_corner_radius=0.006,
+        outer_corner_radius=0.010,
+        center=center,
+    )
+
+
+def _build_wheel_geometry(*, center: bool = True) -> sdk.MeshGeometry:
+    return sdk.WheelGeometry(
+        0.120,
+        0.040,
+        rim=sdk.WheelRim(
+            inner_radius=0.082,
+            flange_height=0.010,
+            flange_thickness=0.004,
+            bead_seat_depth=0.004,
+        ),
+        hub=sdk.WheelHub(
+            radius=0.028,
+            width=0.030,
+            cap_style="domed",
+            bolt_pattern=sdk.BoltPattern(
+                count=5,
+                circle_diameter=0.034,
+                hole_diameter=0.004,
+            ),
+        ),
+        face=sdk.WheelFace(dish_depth=0.006, front_inset=0.003, rear_inset=0.002),
+        spokes=sdk.WheelSpokes(
+            style="split_y",
+            count=5,
+            thickness=0.003,
+            window_radius=0.010,
+        ),
+        bore=sdk.WheelBore(style="round", diameter=0.012),
+        center=center,
+    )
+
+
+def _build_tire_geometry(*, center: bool = True) -> sdk.MeshGeometry:
+    return sdk.TireGeometry(
+        0.145,
+        0.052,
+        inner_radius=0.110,
+        carcass=sdk.TireCarcass(belt_width_ratio=0.66, sidewall_bulge=0.08),
+        tread=sdk.TireTread(
+            style="chevron",
+            depth=0.006,
+            count=18,
+            angle_deg=26.0,
+            land_ratio=0.58,
+        ),
+        grooves=(sdk.TireGroove(center_offset=0.0, width=0.006, depth=0.003),),
+        sidewall=sdk.TireSidewall(style="rounded", bulge=0.06),
+        shoulder=sdk.TireShoulder(width=0.006, radius=0.004),
+        center=center,
+    )
+
+
+def _build_barrel_hinge_geometry(*, center: bool = True) -> sdk.MeshGeometry:
+    return sdk.BarrelHingeGeometry(
+        0.090,
+        leaf_width_a=0.024,
+        leaf_width_b=0.020,
+        leaf_thickness=0.0024,
+        pin_diameter=0.003,
+        knuckle_count=5,
+        holes_a=sdk.HingeHolePattern(
+            style="round",
+            count=3,
+            diameter=0.0032,
+            edge_margin=0.010,
+        ),
+        holes_b=sdk.HingeHolePattern(
+            style="slotted",
+            count=2,
+            slot_size=(0.007, 0.003),
+            edge_margin=0.012,
+        ),
+        center=center,
+    )
+
+
+def _build_piano_hinge_geometry(*, center: bool = True) -> sdk.MeshGeometry:
+    return sdk.PianoHingeGeometry(
+        0.180,
+        leaf_width_a=0.016,
+        leaf_width_b=0.014,
+        leaf_thickness=0.0018,
+        pin_diameter=0.0025,
+        knuckle_pitch=0.012,
+        holes_a=sdk.HingeHolePattern(
+            style="round",
+            count=5,
+            diameter=0.0022,
+            edge_margin=0.010,
+        ),
+        holes_b=sdk.HingeHolePattern(
+            style="round",
+            count=5,
+            diameter=0.0022,
+            edge_margin=0.010,
+        ),
+        center=center,
+    )
+
+
 def test_dome_geometry_builds_closed_hemisphere() -> None:
     geom = sdk.DomeGeometry(0.4, radial_segments=18, height_segments=9)
 
@@ -796,6 +928,54 @@ def test_vent_grille_geometry_requires_at_least_one_slat_row() -> None:
             1.5e-3,
             id="blower-wheel",
         ),
+        pytest.param(
+            _build_knob_geometry,
+            "knob",
+            (-0.028, -0.028, -0.018),
+            (0.028, 0.028, 0.012),
+            2.0e-3,
+            id="knob",
+        ),
+        pytest.param(
+            _build_bezel_geometry,
+            "bezel",
+            (-0.055, -0.040, -0.006),
+            (0.055, 0.040, 0.006),
+            1.5e-3,
+            id="bezel",
+        ),
+        pytest.param(
+            _build_wheel_geometry,
+            "wheel",
+            (-0.0200, -0.120, -0.120),
+            (0.0234, 0.120, 0.120),
+            2.5e-3,
+            id="wheel",
+        ),
+        pytest.param(
+            _build_tire_geometry,
+            "tire",
+            (-0.026, -0.1507, -0.1507),
+            (0.026, 0.1507, 0.1507),
+            2.5e-3,
+            id="tire",
+        ),
+        pytest.param(
+            _build_barrel_hinge_geometry,
+            "barrel_hinge",
+            (-0.0260, -0.0027, -0.045),
+            (0.0220, 0.0027, 0.045),
+            2.0e-3,
+            id="barrel-hinge",
+        ),
+        pytest.param(
+            _build_piano_hinge_geometry,
+            "piano_hinge",
+            (-0.0175, -0.0020, -0.090),
+            (0.0155, 0.0020, 0.090),
+            2.0e-3,
+            id="piano-hinge",
+        ),
     ],
 )
 def test_new_mesh_geometry_helpers_export_clean_single_body_meshes(
@@ -824,6 +1004,10 @@ def test_new_mesh_geometry_helpers_export_clean_single_body_meshes(
         pytest.param(
             _build_perforated_panel_geometry, "PerforatedPanelGeometry", id="perforated-panel"
         ),
+        pytest.param(_build_knob_geometry, "KnobGeometry", id="knob"),
+        pytest.param(_build_bezel_geometry, "BezelGeometry", id="bezel"),
+        pytest.param(_build_barrel_hinge_geometry, "BarrelHingeGeometry", id="barrel-hinge"),
+        pytest.param(_build_piano_hinge_geometry, "PianoHingeGeometry", id="piano-hinge"),
         pytest.param(_build_blower_wheel_geometry, "BlowerWheelGeometry", id="blower-wheel"),
     ],
 )
@@ -831,6 +1015,21 @@ def test_new_mesh_geometry_helpers_support_center_false_z0_mount_frames(builder,
     geometry = builder(center=False)
     mins, _maxs = _bounds(geometry)
     assert mins[2] == pytest.approx(0.0, abs=1e-6), name
+
+
+@pytest.mark.parametrize(
+    ("builder", "name"),
+    [
+        pytest.param(_build_wheel_geometry, "WheelGeometry", id="wheel"),
+        pytest.param(_build_tire_geometry, "TireGeometry", id="tire"),
+    ],
+)
+def test_new_rotational_geometry_helpers_support_center_false_x0_mount_frames(
+    builder, name: str
+) -> None:
+    geometry = builder(center=False)
+    mins, _maxs = _bounds(geometry)
+    assert mins[0] == pytest.approx(0.0, abs=1e-6), name
 
 
 @pytest.mark.parametrize(
@@ -1057,8 +1256,329 @@ def test_new_fan_geometry_helpers_validate_invalid_inputs(builder, message: str)
 
 
 @pytest.mark.parametrize(
+    ("builder", "expected"),
+    [
+        pytest.param(
+            lambda: sdk.KnobGeometry(
+                0.038,
+                0.022,
+                body_style="domed",
+                top_feature=sdk.KnobTopFeature(
+                    style="top_insert",
+                    diameter=0.016,
+                    height=0.0018,
+                ),
+                grip=sdk.KnobGrip(
+                    style="diamond_knurl",
+                    count=24,
+                    depth=0.0011,
+                    helix_angle_deg=28.0,
+                ),
+                indicator=sdk.KnobIndicator(
+                    style="wedge",
+                    mode="raised",
+                    angle_deg=35.0,
+                ),
+                body_reliefs=(
+                    sdk.KnobRelief(
+                        style="top_recess",
+                        width=0.014,
+                        depth=0.0018,
+                    ),
+                ),
+                bore=sdk.KnobBore(
+                    style="splined",
+                    diameter=0.006,
+                    spline_count=10,
+                    spline_depth=0.0007,
+                ),
+            ),
+            "knob",
+            id="knob-detailed-variant",
+        ),
+        pytest.param(
+            lambda: sdk.BezelGeometry(
+                (0.056, 0.056),
+                (0.084, 0.084),
+                0.010,
+                opening_shape="circle",
+                outer_shape="circle",
+                face=sdk.BezelFace(style="chamfered", chamfer=0.0012),
+                flange=sdk.BezelFlange(width=0.004, thickness=0.002, offset=0.001),
+                mounts=sdk.BezelMounts(
+                    style="rear_flange",
+                    hole_count=4,
+                    hole_diameter=0.003,
+                    setback=0.004,
+                ),
+                edge_features=(
+                    sdk.BezelEdgeFeature(
+                        style="notch",
+                        edge="bottom",
+                        size=0.004,
+                        extent=0.014,
+                    ),
+                    sdk.BezelEdgeFeature(
+                        style="groove",
+                        edge="right",
+                        size=0.0012,
+                        extent=0.040,
+                    ),
+                ),
+            ),
+            "bezel",
+            id="bezel-detailed-variant",
+        ),
+        pytest.param(
+            lambda: sdk.WheelGeometry(
+                0.100,
+                0.032,
+                rim=sdk.WheelRim(
+                    inner_radius=0.070,
+                    flange_height=0.008,
+                    flange_thickness=0.003,
+                ),
+                hub=sdk.WheelHub(
+                    radius=0.024,
+                    width=0.024,
+                    cap_style="recessed",
+                ),
+                face=sdk.WheelFace(dish_depth=0.004, front_inset=0.003),
+                spokes=sdk.WheelSpokes(
+                    style="mesh",
+                    count=6,
+                    thickness=0.0028,
+                    window_radius=0.007,
+                ),
+                bore=sdk.WheelBore(style="keyed", diameter=0.010, key_width=0.0025),
+            ),
+            "wheel",
+            id="wheel-detailed-variant",
+        ),
+        pytest.param(
+            lambda: sdk.TireGeometry(
+                0.130,
+                0.044,
+                inner_radius=0.096,
+                tread=sdk.TireTread(
+                    style="block",
+                    depth=0.005,
+                    count=16,
+                    land_ratio=0.52,
+                ),
+                grooves=(
+                    sdk.TireGroove(center_offset=-0.010, width=0.004, depth=0.0025),
+                    sdk.TireGroove(center_offset=0.010, width=0.004, depth=0.0025),
+                ),
+                sidewall=sdk.TireSidewall(style="square", bulge=0.0),
+                shoulder=sdk.TireShoulder(width=0.004, radius=0.003),
+            ),
+            "tire",
+            id="tire-detailed-variant",
+        ),
+        pytest.param(
+            lambda: sdk.BarrelHingeGeometry(
+                0.080,
+                leaf_width_a=0.020,
+                leaf_width_b=0.018,
+                leaf_thickness=0.0022,
+                pin_diameter=0.0028,
+                knuckle_outer_diameter=0.0048,
+                knuckle_count=5,
+                open_angle_deg=120.0,
+                holes_a=sdk.HingeHolePattern(
+                    style="round",
+                    count=3,
+                    diameter=0.003,
+                    edge_margin=0.008,
+                ),
+                holes_b=sdk.HingeHolePattern(
+                    style="slotted",
+                    count=2,
+                    slot_size=(0.006, 0.0028),
+                    edge_margin=0.010,
+                ),
+                pin=sdk.HingePinStyle(
+                    head_style="button",
+                    head_height=0.001,
+                    head_diameter=0.0046,
+                    exposed_end=0.0008,
+                ),
+            ),
+            "barrel-hinge",
+            id="barrel-hinge-detailed-variant",
+        ),
+    ],
+)
+def test_new_detail_option_variants_build_nonempty_meshes(builder, expected: str) -> None:
+    geometry = builder()
+    assert len(geometry.vertices) > 0, expected
+    assert len(geometry.faces) > 0, expected
+    assert _component_count(geometry) == 1, expected
+
+
+def test_wheel_and_tire_helpers_can_be_sized_compatibly() -> None:
+    wheel = sdk.WheelGeometry(
+        0.100,
+        0.032,
+        rim=sdk.WheelRim(inner_radius=0.072, flange_height=0.008, flange_thickness=0.003),
+        hub=sdk.WheelHub(radius=0.023, width=0.022),
+        spokes=sdk.WheelSpokes(style="straight", count=6, thickness=0.003),
+        bore=sdk.WheelBore(style="round", diameter=0.010),
+    )
+    tire = sdk.TireGeometry(
+        0.126,
+        0.038,
+        inner_radius=0.101,
+        tread=sdk.TireTread(style="circumferential", depth=0.003, count=3),
+    )
+
+    wheel_mins, wheel_maxs = _bounds(wheel)
+    tire_mins, tire_maxs = _bounds(tire)
+    assert abs(tire_mins[0]) >= abs(wheel_mins[0]) - 1e-6
+    assert tire_maxs[0] >= wheel_maxs[0] - 1e-6
+    assert tire_maxs[1] > wheel_maxs[1]
+    assert tire_maxs[2] > wheel_maxs[2]
+
+
+@pytest.mark.parametrize(
+    ("builder", "message"),
+    [
+        pytest.param(
+            lambda: sdk.KnobGeometry(
+                0.040,
+                0.022,
+                grip=sdk.KnobGrip(style="fluted", count=1, depth=0.001),
+            ),
+            "KnobGrip.count",
+            id="knob-invalid-grip-count",
+        ),
+        pytest.param(
+            lambda: sdk.KnobGeometry(
+                0.040,
+                0.022,
+                side_draft_deg=46.0,
+            ),
+            "side_draft_deg",
+            id="knob-invalid-side-draft",
+        ),
+        pytest.param(
+            lambda: sdk.KnobGeometry(
+                0.040,
+                0.022,
+                bore=sdk.KnobBore(style="round", diameter=0.080),
+            ),
+            "KnobBore diameter",
+            id="knob-invalid-bore",
+        ),
+        pytest.param(
+            lambda: sdk.BezelGeometry((0.080, 0.050), (0.070, 0.060), 0.010),
+            "opening_size",
+            id="bezel-invalid-opening",
+        ),
+        pytest.param(
+            lambda: sdk.BezelGeometry(
+                (0.080, 0.050),
+                (0.100, 0.070),
+                0.010,
+                recess=sdk.BezelRecess(depth=0.003, inset=0.030),
+            ),
+            "recess wall leaves no outer frame material",
+            id="bezel-invalid-recess",
+        ),
+        pytest.param(
+            lambda: sdk.WheelGeometry(
+                0.100,
+                0.030,
+                rim=sdk.WheelRim(inner_radius=0.100),
+            ),
+            "WheelRim.inner_radius",
+            id="wheel-invalid-rim-inner-radius",
+        ),
+        pytest.param(
+            lambda: sdk.WheelGeometry(
+                0.100,
+                0.030,
+                hub=sdk.WheelHub(radius=0.096, width=0.020),
+            ),
+            "WheelHub dimensions",
+            id="wheel-invalid-hub-radius",
+        ),
+        pytest.param(
+            lambda: sdk.WheelGeometry(
+                0.100,
+                0.030,
+                hub=sdk.WheelHub(radius=0.020, width=0.020),
+                bore=sdk.WheelBore(style="round", diameter=0.050),
+            ),
+            "WheelBore\\.diameter",
+            id="wheel-invalid-bore",
+        ),
+        pytest.param(
+            lambda: sdk.TireGeometry(0.120, 0.040, inner_radius=0.120),
+            "inner_radius",
+            id="tire-invalid-inner-radius",
+        ),
+        pytest.param(
+            lambda: sdk.TireGeometry(
+                0.120,
+                0.040,
+                grooves=(sdk.TireGroove(center_offset=0.0, width=-0.003, depth=0.002),),
+            ),
+            "TireGroove",
+            id="tire-invalid-groove",
+        ),
+        pytest.param(
+            lambda: sdk.BarrelHingeGeometry(
+                0.080,
+                leaf_width_a=0.020,
+                leaf_thickness=0.002,
+                pin_diameter=0.003,
+                knuckle_count=2,
+            ),
+            "knuckle_count",
+            id="barrel-hinge-invalid-knuckle-count",
+        ),
+        pytest.param(
+            lambda: sdk.BarrelHingeGeometry(
+                0.080,
+                leaf_width_a=0.020,
+                leaf_thickness=0.002,
+                pin_diameter=0.005,
+                knuckle_outer_diameter=0.004,
+            ),
+            "pin_diameter",
+            id="barrel-hinge-invalid-pin-diameter",
+        ),
+        pytest.param(
+            lambda: sdk.PianoHingeGeometry(
+                0.120,
+                leaf_width_a=0.016,
+                leaf_thickness=0.0018,
+                pin_diameter=0.0025,
+                knuckle_pitch=0.0,
+            ),
+            "knuckle_pitch",
+            id="piano-hinge-invalid-pitch",
+        ),
+    ],
+)
+def test_new_knob_bezel_wheel_tire_and_hinge_helpers_validate_invalid_inputs(
+    builder, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        builder()
+
+
+@pytest.mark.parametrize(
     "name",
     [
+        "KnobGeometry",
+        "BezelGeometry",
+        "WheelGeometry",
+        "TireGeometry",
+        "BarrelHingeGeometry",
+        "PianoHingeGeometry",
         "PerforatedPanelGeometry",
         "SlotPatternPanelGeometry",
         "ClevisBracketGeometry",
@@ -1069,6 +1589,45 @@ def test_new_fan_geometry_helpers_validate_invalid_inputs(builder, message: str)
     ],
 )
 def test_sdk_and_v0_expose_new_mesh_geometry_helpers(name: str) -> None:
+    assert name in sdk.__all__
+    assert name in sdk_v0.__all__
+    assert getattr(sdk, name) is not None
+    assert getattr(sdk_v0, name) is not None
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "KnobSkirt",
+        "KnobGrip",
+        "KnobIndicator",
+        "KnobTopFeature",
+        "KnobBore",
+        "KnobRelief",
+        "BezelFace",
+        "BezelRecess",
+        "BezelVisor",
+        "BezelFlange",
+        "BezelMounts",
+        "BezelCutout",
+        "BezelEdgeFeature",
+        "WheelRim",
+        "WheelHub",
+        "WheelFace",
+        "WheelSpokes",
+        "WheelBore",
+        "WheelFlange",
+        "BoltPattern",
+        "TireCarcass",
+        "TireTread",
+        "TireGroove",
+        "TireSidewall",
+        "TireShoulder",
+        "HingeHolePattern",
+        "HingePinStyle",
+    ],
+)
+def test_sdk_and_v0_expose_new_mesh_geometry_option_dataclasses(name: str) -> None:
     assert name in sdk.__all__
     assert name in sdk_v0.__all__
     assert getattr(sdk, name) is not None

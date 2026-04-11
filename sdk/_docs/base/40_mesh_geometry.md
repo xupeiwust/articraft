@@ -28,6 +28,39 @@ from sdk import (
     TrunnionYokeGeometry,
     FanRotorGeometry,
     BlowerWheelGeometry,
+    KnobGeometry,
+    KnobSkirt,
+    KnobGrip,
+    KnobIndicator,
+    KnobTopFeature,
+    KnobBore,
+    KnobRelief,
+    BezelGeometry,
+    BezelFace,
+    BezelRecess,
+    BezelVisor,
+    BezelFlange,
+    BezelMounts,
+    BezelCutout,
+    BezelEdgeFeature,
+    WheelGeometry,
+    WheelRim,
+    WheelHub,
+    WheelFace,
+    WheelSpokes,
+    WheelBore,
+    WheelFlange,
+    BoltPattern,
+    TireGeometry,
+    TireCarcass,
+    TireTread,
+    TireGroove,
+    TireSidewall,
+    TireShoulder,
+    BarrelHingeGeometry,
+    PianoHingeGeometry,
+    HingeHolePattern,
+    HingePinStyle,
     VentGrilleGeometry,
     SweepGeometry,
     rounded_rect_profile,
@@ -52,6 +85,9 @@ from sdk import (
   `SlotPatternPanelGeometry`, `VentGrilleGeometry`, `SweepGeometry`
 - bracket/fan helpers: `ClevisBracketGeometry`, `PivotForkGeometry`,
   `TrunnionYokeGeometry`, `FanRotorGeometry`, `BlowerWheelGeometry`
+- control/frame helpers: `KnobGeometry`, `BezelGeometry`
+- wheel/tire helpers: `WheelGeometry`, `TireGeometry`
+- hinge helpers: `BarrelHingeGeometry`, `PianoHingeGeometry`
 - profile helpers: `rounded_rect_profile`, `superellipse_profile`
 - shell helpers: `superellipse_side_loft`, `split_superellipse_side_loft`,
   `resample_side_sections`
@@ -331,6 +367,171 @@ BlowerWheelGeometry(
 - `backplate=False` and `shroud=False` produce a lighter visual variant.
 - The vane passages open into the interior drum cavity rather than stopping at a flat inner wall.
 - `center=False` places the rear-most face on `z=0`.
+
+### `KnobGeometry`
+
+```python
+KnobGeometry(
+    diameter,
+    height,
+    *,
+    body_style: Literal["cylindrical", "tapered", "domed", "mushroom", "skirted", "hourglass"] = "cylindrical",
+    top_diameter=None,
+    base_diameter=None,
+    crown_radius: float = 0.0,
+    edge_radius: float = 0.0,
+    side_draft_deg: float = 0.0,
+    skirt: KnobSkirt | None = None,
+    grip: KnobGrip | None = None,
+    indicator: KnobIndicator | None = None,
+    top_feature: KnobTopFeature | None = None,
+    bore: KnobBore | None = None,
+    body_reliefs: Sequence[KnobRelief] = (),
+    center: bool = True,
+)
+```
+
+- Builds a rotary knob aligned to local `Z`.
+- `center=False` places the mounting face on `z=0`.
+- Use `KnobSkirt`, `KnobGrip`, `KnobIndicator`, `KnobTopFeature`,
+  `KnobBore`, and `KnobRelief` to add visible detail without switching to
+  manual mesh work.
+- This helper is intended to cover plain appliance knobs, fluted or knurled
+  knobs, mushroom clamp knobs, and pointer-style dial caps.
+
+### `BezelGeometry`
+
+```python
+BezelGeometry(
+    opening_size,
+    outer_size,
+    depth,
+    *,
+    opening_shape: Literal["rect", "rounded_rect", "circle", "ellipse", "superellipse"] = "rounded_rect",
+    outer_shape: Literal["rect", "rounded_rect", "circle", "ellipse", "superellipse"] = "rounded_rect",
+    opening_corner_radius: float = 0.0,
+    outer_corner_radius: float = 0.0,
+    wall: float | tuple[float, float, float, float] | None = None,
+    face: BezelFace | None = None,
+    recess: BezelRecess | None = None,
+    visor: BezelVisor | None = None,
+    flange: BezelFlange | None = None,
+    mounts: BezelMounts | None = None,
+    cutouts: Sequence[BezelCutout] = (),
+    edge_features: Sequence[BezelEdgeFeature] = (),
+    center: bool = True,
+)
+```
+
+- Builds a framed opening with optional recesses, visors, flanges, rear
+  mounts, edge cutouts, and trim features.
+- The opening lies in local `XY`; depth extends along `Z`.
+- `center=False` places the rear mounting face on `z=0`.
+- Use this for display frames, instrument trims, light/lens bezels, and
+  recessed panel surrounds.
+
+### `WheelGeometry`
+
+```python
+WheelGeometry(
+    radius,
+    width,
+    *,
+    rim: WheelRim | None = None,
+    hub: WheelHub | None = None,
+    face: WheelFace | None = None,
+    spokes: WheelSpokes | None = None,
+    bore: WheelBore | None = None,
+    flange: WheelFlange | None = None,
+    center: bool = True,
+)
+```
+
+- Builds a wheel, rim, and hub visual that spins about local `X`.
+- Width spans local `X`; the radial wheel profile lies in `YZ`.
+- `center=False` places the inner mounting side on `x=0`.
+- Use `WheelRim`, `WheelHub`, `WheelFace`, `WheelSpokes`, `WheelBore`,
+  `WheelFlange`, and `BoltPattern` to cover solid wheels, slotted wheels,
+  spoke wheels, deep-dish faces, and push-rim style variants.
+
+### `TireGeometry`
+
+```python
+TireGeometry(
+    outer_radius,
+    width,
+    *,
+    inner_radius: float | None = None,
+    carcass: TireCarcass | None = None,
+    tread: TireTread | None = None,
+    grooves: Sequence[TireGroove] = (),
+    sidewall: TireSidewall | None = None,
+    shoulder: TireShoulder | None = None,
+    center: bool = True,
+)
+```
+
+- Builds a tire aligned to local `X` so it composes directly with
+  `WheelGeometry`.
+- `inner_radius` controls the wheel-seat cavity; `outer_radius` controls the
+  outside rolling radius.
+- `center=False` places the inner side face on `x=0`.
+- Use `TireCarcass`, `TireTread`, `TireGroove`, `TireSidewall`, and
+  `TireShoulder` to cover smooth rollers, road tires, square utility tires,
+  ribbed tires, chevron tires, and block/lug tires.
+
+### `BarrelHingeGeometry`
+
+```python
+BarrelHingeGeometry(
+    length,
+    *,
+    leaf_width_a,
+    leaf_width_b=None,
+    leaf_thickness,
+    pin_diameter,
+    knuckle_outer_diameter=None,
+    knuckle_count: int = 5,
+    clearance: float = 0.0005,
+    open_angle_deg: float = 180.0,
+    holes_a: HingeHolePattern | None = None,
+    holes_b: HingeHolePattern | None = None,
+    pin: HingePinStyle | None = None,
+    center: bool = True,
+)
+```
+
+- Builds an exposed two-leaf barrel hinge around a local `Z` pin axis.
+- `center=False` places the lower end on `z=0`.
+- Use `HingeHolePattern` for round or slotted leaf holes and `HingePinStyle`
+  for visible pin-head variants.
+- This is the right helper for visible utility hinges on doors, lids, and
+  access panels.
+
+### `PianoHingeGeometry`
+
+```python
+PianoHingeGeometry(
+    length,
+    *,
+    leaf_width_a,
+    leaf_width_b=None,
+    leaf_thickness,
+    pin_diameter,
+    knuckle_pitch,
+    clearance: float = 0.0005,
+    open_angle_deg: float = 180.0,
+    holes_a: HingeHolePattern | None = None,
+    holes_b: HingeHolePattern | None = None,
+    pin: HingePinStyle | None = None,
+    center: bool = True,
+)
+```
+
+- Builds a continuous hinge strip around a local `Z` pin axis.
+- `knuckle_pitch` controls the repeating hinge pattern along the strip.
+- `center=False` places the lower end on `z=0`.
+- Use this for long lids, access doors, and panelized box-style hinges.
 
 ### `VentGrilleGeometry`
 
@@ -631,6 +832,95 @@ mesh = mesh_from_geometry(blower_wheel, "blower_wheel")
 ```
 
 ```python
+range_knob = KnobGeometry(
+    0.042,
+    0.024,
+    body_style="skirted",
+    top_diameter=0.034,
+    skirt=KnobSkirt(0.052, 0.006, flare=0.08),
+    grip=KnobGrip(style="fluted", count=18, depth=0.0014),
+    indicator=KnobIndicator(style="line", mode="engraved", depth=0.0008),
+    bore=KnobBore(style="d_shaft", diameter=0.006, flat_depth=0.001),
+)
+mesh = mesh_from_geometry(range_knob, "range_knob")
+```
+
+```python
+display_bezel = BezelGeometry(
+    (0.080, 0.050),
+    (0.110, 0.080),
+    0.012,
+    opening_shape="rounded_rect",
+    outer_shape="rounded_rect",
+    opening_corner_radius=0.006,
+    outer_corner_radius=0.010,
+)
+mesh = mesh_from_geometry(display_bezel, "display_bezel")
+```
+
+```python
+wheel = WheelGeometry(
+    0.120,
+    0.040,
+    rim=WheelRim(
+        inner_radius=0.082,
+        flange_height=0.010,
+        flange_thickness=0.004,
+        bead_seat_depth=0.004,
+    ),
+    hub=WheelHub(
+        radius=0.028,
+        width=0.030,
+        cap_style="domed",
+        bolt_pattern=BoltPattern(
+            count=5,
+            circle_diameter=0.034,
+            hole_diameter=0.004,
+        ),
+    ),
+    face=WheelFace(dish_depth=0.006, front_inset=0.003, rear_inset=0.002),
+    spokes=WheelSpokes(style="split_y", count=5, thickness=0.003, window_radius=0.010),
+    bore=WheelBore(style="round", diameter=0.012),
+)
+wheel_mesh = mesh_from_geometry(wheel, "wheel")
+
+tire = TireGeometry(
+    0.145,
+    0.052,
+    inner_radius=0.110,
+    carcass=TireCarcass(belt_width_ratio=0.66, sidewall_bulge=0.08),
+    tread=TireTread(style="chevron", depth=0.006, count=18, angle_deg=26.0, land_ratio=0.58),
+    grooves=(TireGroove(center_offset=0.0, width=0.006, depth=0.003),),
+    sidewall=TireSidewall(style="rounded", bulge=0.06),
+    shoulder=TireShoulder(width=0.006, radius=0.004),
+)
+tire_mesh = mesh_from_geometry(tire, "tire")
+```
+
+```python
+barrel_hinge = BarrelHingeGeometry(
+    0.090,
+    leaf_width_a=0.024,
+    leaf_width_b=0.020,
+    leaf_thickness=0.0024,
+    pin_diameter=0.003,
+    holes_a=HingeHolePattern(style="round", count=3, diameter=0.0032, edge_margin=0.010),
+    holes_b=HingeHolePattern(style="slotted", count=2, slot_size=(0.007, 0.003), edge_margin=0.012),
+)
+barrel_hinge_mesh = mesh_from_geometry(barrel_hinge, "barrel_hinge")
+
+piano_hinge = PianoHingeGeometry(
+    0.180,
+    leaf_width_a=0.016,
+    leaf_width_b=0.014,
+    leaf_thickness=0.0018,
+    pin_diameter=0.0025,
+    knuckle_pitch=0.012,
+)
+piano_hinge_mesh = mesh_from_geometry(piano_hinge, "piano_hinge")
+```
+
+```python
 wall_vent = VentGrilleGeometry(
     (0.18, 0.10),
     frame=0.012,
@@ -654,9 +944,12 @@ mesh = mesh_from_geometry(wall_vent, "wall_vent")
 ## Clarifications for agent usage
 
 - Angle arguments are radians and use the right-hand rule.
+- `KnobGrip.helix_angle_deg` and `KnobIndicator.angle_deg` use degrees.
 - `SlotPatternPanelGeometry.slot_angle_deg` uses degrees.
 - `FanRotorGeometry.blade_pitch_deg` and `FanRotorGeometry.blade_sweep_deg` use degrees.
 - `BlowerWheelGeometry.blade_sweep_deg` uses degrees.
+- `BarrelHingeGeometry.open_angle_deg` and `PianoHingeGeometry.open_angle_deg` use degrees.
+- `TireTread.angle_deg` uses degrees.
 - `VentGrilleGeometry.slat_angle_deg` also uses degrees.
 - `LoftGeometry` validates profiles through their XY projection. End caps only behave as expected when the first and last profiles are planar at constant `z`.
 - `ExtrudeGeometry(..., center=True)` produces a solid centered on the profile plane, spanning `z in [-height/2, +height/2]`. Use the `from_z0(...)` form when the intended span is `z in [0, height]`.

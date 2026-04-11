@@ -2234,10 +2234,391 @@ def _mesh_geometry_shifted_to_z0(geometry: "MeshGeometry") -> "MeshGeometry":
     return shifted
 
 
+def _mesh_geometry_shifted_to_axis0(geometry: "MeshGeometry", axis: int) -> "MeshGeometry":
+    shifted = geometry.copy()
+    mins, _maxs = _mesh_bounds(shifted)
+    delta = [0.0, 0.0, 0.0]
+    delta[int(axis)] = -mins[int(axis)]
+    shifted.translate(delta[0], delta[1], delta[2])
+    return shifted
+
+
 def _adopt_mesh_geometry(target: "MeshGeometry", geometry: "MeshGeometry") -> None:
     target.vertices = [tuple(vertex) for vertex in geometry.vertices]
     target.faces = [tuple(face) for face in geometry.faces]
     _copy_manifold_provenance(geometry, target)
+
+
+@dataclass(frozen=True)
+class KnobSkirt:
+    diameter: float
+    height: float
+    flare: float = 0.0
+    chamfer: float = 0.0
+
+
+@dataclass(frozen=True)
+class KnobGrip:
+    style: Literal[
+        "none",
+        "fluted",
+        "scalloped",
+        "knurled",
+        "ribbed",
+        "diamond_knurl",
+    ] = "none"
+    count: Optional[int] = None
+    depth: float = 0.0
+    width: Optional[float] = None
+    helix_angle_deg: float = 0.0
+
+
+@dataclass(frozen=True)
+class KnobIndicator:
+    style: Literal["none", "line", "notch", "wedge", "dot"] = "none"
+    length: Optional[float] = None
+    width: Optional[float] = None
+    depth: float = 0.0
+    angle_deg: float = 0.0
+    mode: Literal["engraved", "raised"] = "engraved"
+
+
+@dataclass(frozen=True)
+class KnobTopFeature:
+    style: Literal["none", "flush_disk", "recessed_disk", "top_insert"] = "none"
+    diameter: Optional[float] = None
+    depth: float = 0.0
+    height: float = 0.0
+
+
+@dataclass(frozen=True)
+class KnobBore:
+    style: Literal["none", "round", "d_shaft", "double_d", "splined", "hex"] = "round"
+    diameter: Optional[float] = None
+    flat_depth: Optional[float] = None
+    spline_count: Optional[int] = None
+    spline_depth: float = 0.0
+    through: bool = True
+
+
+@dataclass(frozen=True)
+class KnobRelief:
+    style: Literal["side_window", "top_recess", "coin_slot"]
+    angle_deg: float = 0.0
+    width: Optional[float] = None
+    height: Optional[float] = None
+    depth: float = 0.0
+
+
+@dataclass(frozen=True)
+class BezelFace:
+    style: Literal["flat", "rounded", "chamfered", "radiused_step"] = "flat"
+    front_lip: float = 0.0
+    chamfer: float = 0.0
+    fillet: float = 0.0
+
+
+@dataclass(frozen=True)
+class BezelRecess:
+    depth: float
+    inset: float
+    floor_radius: float = 0.0
+    wall_draft_deg: float = 0.0
+
+
+@dataclass(frozen=True)
+class BezelVisor:
+    top_extension: float = 0.0
+    side_extension: float = 0.0
+    thickness: float = 0.0
+    draft_deg: float = 0.0
+
+
+@dataclass(frozen=True)
+class BezelFlange:
+    width: float = 0.0
+    thickness: float = 0.0
+    offset: float = 0.0
+
+
+@dataclass(frozen=True)
+class BezelMounts:
+    style: Literal["none", "bosses", "tabs", "rear_flange"] = "none"
+    hole_count: int = 0
+    hole_diameter: Optional[float] = None
+    boss_diameter: Optional[float] = None
+    setback: float = 0.0
+
+
+@dataclass(frozen=True)
+class BezelCutout:
+    edge: Literal["top", "bottom", "left", "right"]
+    width: float
+    depth: float
+    offset: float = 0.0
+
+
+@dataclass(frozen=True)
+class BezelEdgeFeature:
+    style: Literal["bead", "step", "notch"] = "bead"
+    edge: Literal["top", "bottom", "left", "right"] = "top"
+    size: float = 0.0
+    offset: float = 0.0
+    extent: float = 0.0
+
+
+@dataclass(frozen=True)
+class BoltPattern:
+    count: int
+    circle_diameter: float
+    hole_diameter: float
+    countersink: float = 0.0
+
+
+@dataclass(frozen=True)
+class WheelRim:
+    outer_radius: Optional[float] = None
+    inner_radius: Optional[float] = None
+    flange_height: float = 0.0
+    flange_thickness: float = 0.0
+    bead_seat_depth: float = 0.0
+
+
+@dataclass(frozen=True)
+class WheelHub:
+    radius: float
+    width: float
+    cap_style: Literal["flat", "domed", "protruding", "recessed"] = "flat"
+    bolt_pattern: Optional[BoltPattern] = None
+
+
+@dataclass(frozen=True)
+class WheelFace:
+    dish_depth: float = 0.0
+    front_inset: float = 0.0
+    rear_inset: float = 0.0
+    window_depth: float = 0.0
+
+
+@dataclass(frozen=True)
+class WheelSpokes:
+    style: Literal["none", "disc", "solid_slots", "straight", "split_y", "mesh"] = "none"
+    count: Optional[int] = None
+    thickness: float = 0.0
+    window_radius: float = 0.0
+    twist_deg: float = 0.0
+
+
+@dataclass(frozen=True)
+class WheelBore:
+    style: Literal["round", "keyed", "hex"] = "round"
+    diameter: float = 0.0
+    key_width: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class WheelFlange:
+    radius: float
+    thickness: float
+    offset: float = 0.0
+    side: Literal["front", "rear", "both"] = "both"
+    section: Literal["flat", "round"] = "flat"
+
+
+@dataclass(frozen=True)
+class TireCarcass:
+    crown_radius: Optional[float] = None
+    belt_width_ratio: float = 0.34
+    sidewall_bulge: float = 0.08
+
+
+@dataclass(frozen=True)
+class TireTread:
+    style: Literal["none", "circumferential", "block", "rib", "chevron", "lug"] = "none"
+    depth: float = 0.0
+    pitch: Optional[float] = None
+    count: Optional[int] = None
+    angle_deg: float = 0.0
+    land_ratio: float = 0.5
+
+
+@dataclass(frozen=True)
+class TireGroove:
+    center_offset: float = 0.0
+    width: float = 0.0
+    depth: float = 0.0
+
+
+@dataclass(frozen=True)
+class TireSidewall:
+    style: Literal["flat", "bulged", "square", "rounded"] = "rounded"
+    bulge: float = 0.08
+    inset_ratio: float = 0.18
+
+
+@dataclass(frozen=True)
+class TireShoulder:
+    style: Literal["soft", "square"] = "soft"
+    radius: float = 0.0
+    width: float = 0.0
+
+
+@dataclass(frozen=True)
+class HingeHolePattern:
+    style: Literal["none", "round", "countersunk", "slotted"] = "none"
+    count: int = 0
+    diameter: Optional[float] = None
+    slot_size: Optional[tuple[float, float]] = None
+    edge_margin: float = 0.0
+    pitch: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class HingePinStyle:
+    head_style: Literal["plain", "button", "flat", "peened"] = "plain"
+    head_height: float = 0.0
+    head_diameter: Optional[float] = None
+    exposed_end: float = 0.0
+
+
+def _cq_polyline_wire(cq_module, points: Sequence[Vec2], plane: str = "XY"):
+    return cq_module.Workplane(plane).polyline(points).close()
+
+
+def _sample_ellipse_profile(width: float, height: float, *, segments: int = 64) -> list[Vec2]:
+    rx = float(width) * 0.5
+    ry = float(height) * 0.5
+    return [
+        (rx * cos(2.0 * pi * index / float(segments)), ry * sin(2.0 * pi * index / float(segments)))
+        for index in range(segments)
+    ]
+
+
+def _sample_rect_profile(width: float, height: float) -> list[Vec2]:
+    hw = float(width) * 0.5
+    hh = float(height) * 0.5
+    return [(-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh)]
+
+
+def _shape_profile_points_2d(
+    shape: str,
+    size: Sequence[float],
+    *,
+    corner_radius: float = 0.0,
+    segments: int = 64,
+) -> list[Vec2]:
+    width = float(size[0])
+    height = float(size[1])
+    if width <= 0.0 or height <= 0.0:
+        raise ValueError("shape size values must be positive")
+    if shape == "rect":
+        return _sample_rect_profile(width, height)
+    if shape == "rounded_rect":
+        return rounded_rect_profile(
+            width, height, max(0.0, corner_radius), corner_segments=max(4, segments // 16)
+        )
+    if shape == "circle":
+        diameter = min(width, height)
+        return _sample_ellipse_profile(diameter, diameter, segments=segments)
+    if shape == "ellipse":
+        return _sample_ellipse_profile(width, height, segments=segments)
+    if shape == "superellipse":
+        return superellipse_profile(width, height, exponent=2.8, segments=segments)
+    raise ValueError(f"Unsupported shape {shape!r}")
+
+
+def _shape_size_from_wall(
+    inner_size: Sequence[float],
+    wall: Union[float, Sequence[float]],
+) -> tuple[float, float]:
+    inner_w = float(inner_size[0])
+    inner_h = float(inner_size[1])
+    if isinstance(wall, (int, float)):
+        wall_left = wall_right = wall_bottom = wall_top = float(wall)
+    else:
+        if len(wall) != 4:
+            raise ValueError("wall must be a float or a 4-sequence")
+        wall_left, wall_right, wall_bottom, wall_top = (float(value) for value in wall)
+    if min(wall_left, wall_right, wall_bottom, wall_top) < 0.0:
+        raise ValueError("wall values must be non-negative")
+    return (
+        inner_w + wall_left + wall_right,
+        inner_h + wall_bottom + wall_top,
+    )
+
+
+def _cq_ring_solid(
+    cq_module,
+    outer_points: Sequence[Vec2],
+    inner_points: Sequence[Vec2],
+    depth: float,
+    *,
+    center: bool = True,
+):
+    shape = _cq_polyline_wire(cq_module, outer_points).extrude(float(depth) * 0.5, both=center)
+    inner_cut = _cq_polyline_wire(cq_module, inner_points).extrude(
+        float(depth) + max(0.002, float(depth) * 0.5),
+        both=center,
+    )
+    return shape.cut(inner_cut)
+
+
+def _cq_annulus_x(cq_module, outer_radius: float, inner_radius: float, width: float):
+    return (
+        cq_module.Workplane("YZ")
+        .circle(float(outer_radius))
+        .circle(max(float(inner_radius), 1.0e-4))
+        .extrude(float(width) * 0.5, both=True)
+    )
+
+
+def _centered_pattern_positions(count: int, spacing: float) -> list[float]:
+    if count <= 0:
+        return []
+    if count == 1:
+        return [0.0]
+    origin = -0.5 * float(spacing) * float(count - 1)
+    return [origin + float(index) * float(spacing) for index in range(count)]
+
+
+def _rounded_slot_profile(length: float, width: float, *, segments: int = 10) -> list[Vec2]:
+    radius = width * 0.5
+    straight = max(length - width, 0.0)
+    half = straight * 0.5
+    points: list[Vec2] = []
+    for index in range(segments + 1):
+        theta = -pi * 0.5 + pi * (index / float(segments))
+        points.append((half + radius * cos(theta), radius * sin(theta)))
+    for index in range(segments + 1):
+        theta = pi * 0.5 + pi * (index / float(segments))
+        points.append((-half + radius * cos(theta), radius * sin(theta)))
+    return points
+
+
+def _loft_between_radii_z(
+    cq_module,
+    radii_and_offsets: Sequence[tuple[float, float]],
+):
+    wp = None
+    previous_offset = 0.0
+    for radius, offset in radii_and_offsets:
+        if wp is None:
+            wp = cq_module.Workplane("XY").workplane(offset=offset).circle(radius)
+        else:
+            wp = wp.workplane(offset=offset - previous_offset).circle(radius)
+        previous_offset = offset
+    if wp is None:
+        raise ValueError("No loft sections were provided")
+    return wp.loft(combine=True, ruled=False)
+
+
+def _cut_with_pattern(
+    shape,
+    cutters: Sequence[object],
+):
+    for cutter in cutters:
+        shape = shape.cut(cutter)
+    return shape
 
 
 def _mesh_geometry_from_cadquery_model(
@@ -3312,6 +3693,1376 @@ class BlowerWheelGeometry(MeshGeometry):
         if not center:
             geom = _mesh_geometry_shifted_to_z0(geom)
         _adopt_mesh_geometry(self, geom)
+
+
+class KnobGeometry(MeshGeometry):
+    """
+    Build a flexible rotary knob aligned to local Z.
+    """
+
+    def __init__(
+        self,
+        diameter: float,
+        height: float,
+        *,
+        body_style: Literal[
+            "cylindrical",
+            "tapered",
+            "domed",
+            "mushroom",
+            "skirted",
+            "hourglass",
+        ] = "cylindrical",
+        top_diameter: Optional[float] = None,
+        base_diameter: Optional[float] = None,
+        crown_radius: float = 0.0,
+        edge_radius: float = 0.0,
+        side_draft_deg: float = 0.0,
+        skirt: Optional[KnobSkirt] = None,
+        grip: Optional[KnobGrip] = None,
+        indicator: Optional[KnobIndicator] = None,
+        top_feature: Optional[KnobTopFeature] = None,
+        bore: Optional[KnobBore] = None,
+        body_reliefs: Sequence[KnobRelief] = (),
+        center: bool = True,
+    ):
+        super().__init__()
+        diameter = float(diameter)
+        height = float(height)
+        crown_radius = max(0.0, float(crown_radius))
+        edge_radius = max(0.0, float(edge_radius))
+        side_draft_deg = float(side_draft_deg)
+        if diameter <= 0.0 or height <= 0.0:
+            raise ValueError("diameter and height must be positive")
+        if abs(side_draft_deg) >= 45.0:
+            raise ValueError("abs(side_draft_deg) must be < 45")
+
+        base_diameter = float(base_diameter) if base_diameter is not None else diameter
+        if base_diameter <= 0.0:
+            raise ValueError("base_diameter must be positive")
+        top_diameter = float(top_diameter) if top_diameter is not None else diameter
+        if top_diameter <= 0.0:
+            raise ValueError("top_diameter must be positive")
+
+        skirt = skirt
+        grip = grip or KnobGrip()
+        indicator = indicator or KnobIndicator()
+        top_feature = top_feature or KnobTopFeature()
+        bore = bore or KnobBore(style="none")
+        if skirt is not None and (skirt.diameter <= 0.0 or skirt.height <= 0.0):
+            raise ValueError("KnobSkirt diameter and height must be positive")
+        if grip.depth < 0.0:
+            raise ValueError("KnobGrip.depth must be non-negative")
+        if indicator.depth < 0.0:
+            raise ValueError("KnobIndicator.depth must be non-negative")
+        if top_feature.depth < 0.0 or top_feature.height < 0.0:
+            raise ValueError("KnobTopFeature depth/height must be non-negative")
+        if bore.diameter is not None and bore.diameter <= 0.0:
+            raise ValueError("KnobBore.diameter must be positive when provided")
+        for relief in body_reliefs:
+            if relief.depth < 0.0:
+                raise ValueError("KnobRelief.depth must be non-negative")
+
+        cq = require_cadquery(feature="KnobGeometry")
+
+        body_height = height
+        body_bottom = -height * 0.5
+        max_radius = max(base_diameter, top_diameter) * 0.5
+        if skirt is not None:
+            max_radius = max(max_radius, skirt.diameter * 0.5)
+
+        def body_radius_at(t: float) -> float:
+            if body_style == "cylindrical":
+                return max(base_diameter, top_diameter) * 0.5
+            if body_style == "tapered":
+                return (base_diameter * (1.0 - t) + top_diameter * t) * 0.5
+            if body_style == "domed":
+                if t < 0.72:
+                    return (base_diameter * 0.5) * (
+                        1.0 - min(max(side_draft_deg / 50.0, -0.2), 0.2) * t
+                    )
+                u = (t - 0.72) / 0.28
+                return max(
+                    0.001,
+                    top_diameter * 0.5 + (base_diameter * 0.5 - top_diameter * 0.5) * (1.0 - u * u),
+                )
+            if body_style == "mushroom":
+                stem_radius = min(base_diameter, top_diameter, diameter) * 0.28
+                cap_radius = max(base_diameter, top_diameter, diameter) * 0.5
+                if t < 0.42:
+                    return stem_radius
+                if t < 0.62:
+                    u = (t - 0.42) / 0.20
+                    return stem_radius + (cap_radius - stem_radius) * u
+                if t < 0.85:
+                    return cap_radius
+                u = (t - 0.85) / 0.15
+                return max(cap_radius * (1.0 - 0.20 * u * u), stem_radius)
+            if body_style == "skirted":
+                skirt_radius = max(base_diameter * 0.55, diameter * 0.52)
+                crown_radius_local = top_diameter * 0.5
+                if t < 0.40:
+                    return skirt_radius
+                if t < 0.56:
+                    u = (t - 0.40) / 0.16
+                    return skirt_radius + (crown_radius_local - skirt_radius) * u
+                return crown_radius_local
+            if body_style == "hourglass":
+                waist_radius = min(base_diameter, top_diameter, diameter) * 0.32
+                if t < 0.5:
+                    u = t / 0.5
+                    return base_diameter * 0.5 + (waist_radius - base_diameter * 0.5) * u
+                u = (t - 0.5) / 0.5
+                return waist_radius + (top_diameter * 0.5 - waist_radius) * u
+            raise ValueError(f"Unsupported body_style {body_style!r}")
+
+        section_offsets = [
+            0.0,
+            body_height * 0.18,
+            body_height * 0.42,
+            body_height * 0.72,
+            body_height,
+        ]
+        radii_and_offsets = [
+            (max(0.001, body_radius_at(offset / body_height)), body_bottom + offset)
+            for offset in section_offsets
+        ]
+        shape = _loft_between_radii_z(cq, radii_and_offsets)
+
+        if skirt is not None:
+            skirt_radius = skirt.diameter * 0.5
+            skirt_bottom = body_bottom - skirt.height
+            skirt_shape = _loft_between_radii_z(
+                cq,
+                [
+                    (max(0.001, skirt_radius * (1.0 + skirt.flare)), skirt_bottom),
+                    (max(0.001, skirt_radius), body_bottom),
+                ],
+            )
+            shape = shape.union(skirt_shape)
+
+        if edge_radius > 0.0:
+            try:
+                shape = shape.edges("|Z").fillet(min(edge_radius, max_radius * 0.35, height * 0.18))
+            except Exception:
+                pass
+        if crown_radius > 0.0:
+            try:
+                shape = (
+                    shape.faces(">Z")
+                    .edges()
+                    .fillet(min(crown_radius, max_radius * 0.25, height * 0.16))
+                )
+            except Exception:
+                pass
+
+        if grip.style != "none" and grip.depth > 1e-6:
+            grip_count = grip.count or (28 if grip.style in {"knurled", "diamond_knurl"} else 18)
+            if grip_count < 2:
+                raise ValueError("KnobGrip.count must be at least 2")
+            grip_width = (
+                float(grip.width)
+                if grip.width is not None
+                else (
+                    max_radius * 0.18
+                    if grip.style in {"fluted", "scalloped"}
+                    else max_radius * 0.10
+                )
+            )
+            if grip_width <= 0.0:
+                raise ValueError("KnobGrip.width must be positive when provided")
+
+            cutters: list[object] = []
+            if grip.style in {"fluted", "scalloped", "ribbed"}:
+                cutter_radius = grip_width * (0.55 if grip.style != "ribbed" else 0.38)
+                radial_center = max_radius + cutter_radius - grip.depth
+                for index in range(grip_count):
+                    cutter = (
+                        cq.Workplane("XY")
+                        .circle(cutter_radius)
+                        .extrude(
+                            height + (skirt.height if skirt is not None else 0.0) + 0.01, both=True
+                        )
+                        .translate((radial_center, 0.0, body_bottom + height * 0.5))
+                        .rotate((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 360.0 * index / float(grip_count))
+                    )
+                    cutters.append(cutter)
+            else:
+                tangential = max(grip_width, max_radius * 0.06)
+                radial = max(grip.depth * 1.8, max_radius * 0.06)
+                box_height = height * 1.25
+                helix_angle = grip.helix_angle_deg if abs(grip.helix_angle_deg) > 1e-6 else 24.0
+                for index in range(grip_count):
+                    base_angle = 360.0 * index / float(grip_count)
+                    for tilt_sign in (-1.0, 1.0) if grip.style == "diamond_knurl" else (1.0,):
+                        cutter = (
+                            cq.Workplane("XY")
+                            .box(radial, tangential, box_height)
+                            .translate(
+                                (max_radius - grip.depth * 0.5, 0.0, body_bottom + height * 0.5)
+                            )
+                            .rotate(
+                                (0.0, 0.0, 0.0), (0.0, 1.0, 0.0), helix_angle * float(tilt_sign)
+                            )
+                            .rotate((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), base_angle)
+                        )
+                        cutters.append(cutter)
+            shape = _cut_with_pattern(shape, cutters)
+
+        if indicator.style != "none":
+            indicator_length = indicator.length or max(diameter * 0.34, 0.003)
+            indicator_width = indicator.width or max(diameter * 0.06, 0.0015)
+            indicator_depth = max(indicator.depth, max(height * 0.03, 0.0008))
+            top_z = body_bottom + height
+            if indicator.style in {"line", "notch"}:
+                feature = (
+                    cq.Workplane("XY")
+                    .box(indicator_length, indicator_width, indicator_depth)
+                    .translate((indicator_length * 0.18, 0.0, top_z + indicator_depth * 0.5))
+                )
+            elif indicator.style == "wedge":
+                profile = [
+                    (-indicator_width * 0.5, 0.0),
+                    (indicator_width * 0.5, 0.0),
+                    (0.0, indicator_length),
+                ]
+                feature = (
+                    cq.Workplane("XY")
+                    .polyline(profile)
+                    .close()
+                    .extrude(indicator_depth)
+                    .translate((0.0, 0.0, top_z))
+                )
+            else:
+                dot_radius = indicator_width * 0.5
+                feature = (
+                    cq.Workplane("XY")
+                    .circle(dot_radius)
+                    .extrude(indicator_depth)
+                    .translate((indicator_length * 0.22, 0.0, top_z))
+                )
+            feature = feature.rotate((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), indicator.angle_deg)
+            if indicator.mode == "raised" and indicator.style != "notch":
+                shape = shape.union(feature)
+            else:
+                shape = shape.cut(feature.translate((0.0, 0.0, -indicator_depth * 0.5)))
+
+        if top_feature.style != "none":
+            feature_diameter = top_feature.diameter or diameter * 0.55
+            feature_radius = feature_diameter * 0.5
+            top_z = body_bottom + height
+            if feature_radius <= 0.0:
+                raise ValueError("KnobTopFeature.diameter must be positive when provided")
+            if top_feature.style == "flush_disk":
+                feature = (
+                    cq.Workplane("XY")
+                    .circle(feature_radius)
+                    .extrude(max(top_feature.height, height * 0.06))
+                    .translate((0.0, 0.0, top_z))
+                )
+                shape = shape.union(feature)
+            elif top_feature.style == "top_insert":
+                feature = (
+                    cq.Workplane("XY")
+                    .circle(feature_radius)
+                    .extrude(max(top_feature.height, height * 0.04))
+                    .translate((0.0, 0.0, top_z + height * 0.01))
+                )
+                shape = shape.union(feature)
+            else:
+                feature = (
+                    cq.Workplane("XY")
+                    .circle(feature_radius)
+                    .extrude(max(top_feature.depth, height * 0.08))
+                    .translate((0.0, 0.0, top_z - max(top_feature.depth, height * 0.08)))
+                )
+                shape = shape.cut(feature)
+
+        if bore.style != "none":
+            bore_diameter = bore.diameter or diameter * 0.34
+            if bore_diameter <= 0.0 or bore_diameter >= max_radius * 2.0:
+                raise ValueError("KnobBore diameter must fit inside the knob body")
+            bore_depth = (
+                height + (skirt.height if skirt is not None else 0.0) + 0.01
+                if bore.through
+                else max(height * 0.7, diameter * 0.22)
+            )
+            if bore.style == "round":
+                bore_cut = cq.Workplane("XY").circle(bore_diameter * 0.5).extrude(bore_depth)
+            elif bore.style == "hex":
+                bore_cut = cq.Workplane("XY").polygon(6, bore_diameter).extrude(bore_depth)
+            elif bore.style in {"d_shaft", "double_d"}:
+                flat_depth = (
+                    float(bore.flat_depth) if bore.flat_depth is not None else bore_diameter * 0.16
+                )
+                cut_r = bore_diameter * 0.5
+                flat_x = cut_r - flat_depth
+                circle_points = [
+                    (cut_r * cos(theta), cut_r * sin(theta))
+                    for theta in np.linspace(0.0, 2.0 * pi, 48, endpoint=False)
+                ]
+                if bore.style == "d_shaft":
+                    profile_points = [(min(point[0], flat_x), point[1]) for point in circle_points]
+                else:
+                    profile_points = [
+                        (max(min(point[0], flat_x), -flat_x), point[1]) for point in circle_points
+                    ]
+                bore_cut = cq.Workplane("XY").polyline(profile_points).close().extrude(bore_depth)
+            else:
+                spline_count = bore.spline_count or 8
+                if spline_count < 3:
+                    raise ValueError("KnobBore.spline_count must be at least 3")
+                spline_depth = max(bore.spline_depth, bore_diameter * 0.06)
+                outer_r = bore_diameter * 0.5
+                inner_r = max(outer_r - spline_depth, outer_r * 0.72)
+                points = []
+                for index in range(spline_count * 2):
+                    theta = pi * index / float(spline_count)
+                    radius = outer_r if index % 2 == 0 else inner_r
+                    points.append((radius * cos(theta), radius * sin(theta)))
+                bore_cut = cq.Workplane("XY").polyline(points).close().extrude(bore_depth)
+            bore_cut = bore_cut.translate(
+                (0.0, 0.0, body_bottom - (skirt.height if skirt is not None else 0.0))
+            )
+            shape = shape.cut(bore_cut)
+
+        for relief in body_reliefs:
+            relief_depth = max(relief.depth, diameter * 0.04)
+            relief_width = relief.width or diameter * 0.22
+            relief_height = relief.height or height * 0.18
+            if relief.style == "side_window":
+                cutter = (
+                    cq.Workplane("XY")
+                    .box(relief_depth * 2.2, relief_width, relief_height)
+                    .translate((max_radius - relief_depth * 0.55, 0.0, body_bottom + height * 0.55))
+                    .rotate((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), relief.angle_deg)
+                )
+                shape = shape.cut(cutter)
+            elif relief.style == "top_recess":
+                cutter = (
+                    cq.Workplane("XY")
+                    .circle(relief_width * 0.5)
+                    .extrude(relief_depth)
+                    .translate((0.0, 0.0, body_bottom + height - relief_depth))
+                )
+                shape = shape.cut(cutter)
+            else:
+                cutter = (
+                    cq.Workplane("XY")
+                    .box(relief_width, relief_width * 0.24, relief_depth)
+                    .translate((0.0, 0.0, body_bottom + height - relief_depth * 0.5))
+                    .rotate((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), relief.angle_deg)
+                )
+                shape = shape.cut(cutter)
+
+        geom = _mesh_geometry_from_cadquery_model(shape)
+        if not center:
+            geom = _mesh_geometry_shifted_to_z0(geom)
+        _adopt_mesh_geometry(self, geom)
+
+
+class BezelGeometry(MeshGeometry):
+    """
+    Build a framed opening with optional recess, visor, flange, and rear mounts.
+    """
+
+    def __init__(
+        self,
+        opening_size: Sequence[float],
+        outer_size: Sequence[float],
+        depth: float,
+        *,
+        opening_shape: Literal[
+            "rect", "rounded_rect", "circle", "ellipse", "superellipse"
+        ] = "rounded_rect",
+        outer_shape: Literal[
+            "rect", "rounded_rect", "circle", "ellipse", "superellipse"
+        ] = "rounded_rect",
+        opening_corner_radius: float = 0.0,
+        outer_corner_radius: float = 0.0,
+        wall: Union[float, tuple[float, float, float, float], None] = None,
+        face: Optional[BezelFace] = None,
+        recess: Optional[BezelRecess] = None,
+        visor: Optional[BezelVisor] = None,
+        flange: Optional[BezelFlange] = None,
+        mounts: Optional[BezelMounts] = None,
+        cutouts: Sequence[BezelCutout] = (),
+        edge_features: Sequence[BezelEdgeFeature] = (),
+        center: bool = True,
+    ):
+        super().__init__()
+        opening_w = float(opening_size[0])
+        opening_h = float(opening_size[1])
+        outer_w = float(outer_size[0])
+        outer_h = float(outer_size[1])
+        depth = float(depth)
+        opening_corner_radius = max(0.0, float(opening_corner_radius))
+        outer_corner_radius = max(0.0, float(outer_corner_radius))
+        face = face or BezelFace()
+        visor = visor or BezelVisor()
+        flange = flange or BezelFlange()
+        mounts = mounts or BezelMounts()
+
+        if min(opening_w, opening_h, outer_w, outer_h, depth) <= 0.0:
+            raise ValueError("opening_size, outer_size, and depth must be positive")
+        if opening_w >= outer_w or opening_h >= outer_h:
+            raise ValueError("opening_size must be smaller than outer_size on both axes")
+        if recess is not None and (recess.depth <= 0.0 or recess.inset < 0.0):
+            raise ValueError("BezelRecess depth must be positive and inset must be non-negative")
+
+        cq = require_cadquery(feature="BezelGeometry")
+        outer_points = _shape_profile_points_2d(
+            outer_shape,
+            (outer_w, outer_h),
+            corner_radius=outer_corner_radius,
+        )
+        opening_points = _shape_profile_points_2d(
+            opening_shape,
+            (opening_w, opening_h),
+            corner_radius=opening_corner_radius,
+        )
+        shape = _cq_ring_solid(cq, outer_points, opening_points, depth, center=True)
+
+        if face.style in {"rounded", "radiused_step"} and face.fillet > 1e-6:
+            try:
+                shape = shape.edges("|Z").fillet(
+                    min(face.fillet, depth * 0.25, min(outer_w, outer_h) * 0.1)
+                )
+            except Exception:
+                pass
+        if face.style == "chamfered" and face.chamfer > 1e-6:
+            try:
+                shape = shape.edges("|Z").chamfer(
+                    min(face.chamfer, depth * 0.25, min(outer_w, outer_h) * 0.1)
+                )
+            except Exception:
+                pass
+
+        derived_wall = (
+            (outer_w - opening_w) * 0.5,
+            (outer_w - opening_w) * 0.5,
+            (outer_h - opening_h) * 0.5,
+            (outer_h - opening_h) * 0.5,
+        )
+        if face.front_lip > 1e-6 or face.style == "radiused_step":
+            lip_thickness = max(face.front_lip, depth * 0.08, 0.0015)
+            if wall is not None:
+                lip_size = _shape_size_from_wall(opening_size, wall)
+            else:
+                lip_size = (
+                    min(
+                        opening_w + max(face.front_lip * 2.0, derived_wall[0] * 1.05),
+                        outer_w - 0.001,
+                    ),
+                    min(
+                        opening_h + max(face.front_lip * 2.0, derived_wall[2] * 1.05),
+                        outer_h - 0.001,
+                    ),
+                )
+            if lip_size[0] < outer_w and lip_size[1] < outer_h:
+                lip_outer = _shape_profile_points_2d(
+                    opening_shape if outer_shape != "circle" else outer_shape,
+                    lip_size,
+                    corner_radius=min(
+                        opening_corner_radius + face.front_lip,
+                        lip_size[0] * 0.25,
+                        lip_size[1] * 0.25,
+                    ),
+                )
+                lip = _cq_ring_solid(
+                    cq, lip_outer, opening_points, lip_thickness, center=True
+                ).translate((0.0, 0.0, depth * 0.5))
+                shape = shape.union(lip)
+
+        if recess is not None:
+            requested_recess_size = (opening_w + recess.inset * 2.0, opening_h + recess.inset * 2.0)
+            if wall is None and (
+                requested_recess_size[0] >= outer_w or requested_recess_size[1] >= outer_h
+            ):
+                raise ValueError("recess wall leaves no outer frame material")
+            recess_size = (
+                _shape_size_from_wall(opening_size, wall)
+                if wall is not None
+                else (
+                    min(requested_recess_size[0], outer_w - 0.001),
+                    min(requested_recess_size[1], outer_h - 0.001),
+                )
+            )
+            if recess_size[0] >= outer_w or recess_size[1] >= outer_h:
+                raise ValueError("recess wall leaves no outer frame material")
+            recess_points = _shape_profile_points_2d(
+                opening_shape if outer_shape != "circle" else outer_shape,
+                recess_size,
+                corner_radius=min(
+                    opening_corner_radius + recess.inset,
+                    recess_size[0] * 0.25,
+                    recess_size[1] * 0.25,
+                ),
+            )
+            recess_cut = _cq_ring_solid(
+                cq, recess_points, opening_points, recess.depth, center=True
+            ).translate((0.0, 0.0, depth * 0.5 - recess.depth * 0.5))
+            shape = shape.cut(recess_cut)
+
+        if visor.thickness > 1e-6 and (visor.top_extension > 1e-6 or visor.side_extension > 1e-6):
+            top_visor = (
+                cq.Workplane("XY")
+                .box(
+                    outer_w + visor.side_extension * 2.0,
+                    max(visor.top_extension, visor.thickness),
+                    visor.thickness,
+                )
+                .translate((0.0, outer_h * 0.5 + visor.top_extension * 0.5, depth * 0.5))
+            )
+            shape = shape.union(top_visor)
+            if visor.side_extension > 1e-6:
+                cheek_y = max(visor.top_extension, outer_h * 0.5) * 0.5
+                cheek = cq.Workplane("XY").box(
+                    visor.side_extension,
+                    max(visor.top_extension, outer_h * 0.45),
+                    visor.thickness,
+                )
+                shape = shape.union(
+                    cheek.translate(
+                        (outer_w * 0.5 + visor.side_extension * 0.5, cheek_y, depth * 0.5)
+                    )
+                )
+                shape = shape.union(
+                    cheek.translate(
+                        (-(outer_w * 0.5 + visor.side_extension * 0.5), cheek_y, depth * 0.5)
+                    )
+                )
+
+        if flange.width > 1e-6 and flange.thickness > 1e-6:
+            flange_outer = _shape_profile_points_2d(
+                outer_shape,
+                (outer_w + flange.width * 2.0, outer_h + flange.width * 2.0),
+                corner_radius=outer_corner_radius + flange.width,
+            )
+            flange_shape = _cq_ring_solid(
+                cq, flange_outer, outer_points, flange.thickness, center=True
+            ).translate((0.0, 0.0, -depth * 0.5 - flange.offset))
+            shape = shape.union(flange_shape)
+
+        if mounts.style == "bosses" and mounts.hole_count > 0:
+            boss_radius = (
+                max(float(mounts.boss_diameter) * 0.5, 0.0015)
+                if mounts.boss_diameter is not None
+                else max(min(outer_w, outer_h) * 0.05, 0.003)
+            )
+            hole_radius = (
+                max(float(mounts.hole_diameter) * 0.5, 0.0008)
+                if mounts.hole_diameter is not None
+                else boss_radius * 0.38
+            )
+            boss_thickness = max(depth * 0.18, boss_radius * 0.8)
+            margin_x = outer_w * 0.5 - boss_radius - max(mounts.setback, 0.001)
+            margin_y = outer_h * 0.5 - boss_radius - max(mounts.setback, 0.001)
+            boss_points = [
+                (-margin_x, -margin_y),
+                (margin_x, -margin_y),
+                (margin_x, margin_y),
+                (-margin_x, margin_y),
+            ][: mounts.hole_count]
+            for bx, by in boss_points:
+                boss = (
+                    cq.Workplane("XY")
+                    .circle(boss_radius)
+                    .extrude(boss_thickness)
+                    .translate((bx, by, -depth * 0.5 - boss_thickness))
+                )
+                hole = (
+                    cq.Workplane("XY")
+                    .circle(hole_radius)
+                    .extrude(boss_thickness + depth + 0.01)
+                    .translate((bx, by, -depth * 0.5 - boss_thickness))
+                )
+                shape = shape.union(boss).cut(hole)
+        elif mounts.style == "tabs" and mounts.hole_count > 0:
+            tab_width = max(outer_w * 0.16, 0.008)
+            tab_depth = max(depth * 0.14, 0.002)
+            hole_radius = (
+                max(float(mounts.hole_diameter) * 0.5, 0.0008)
+                if mounts.hole_diameter is not None
+                else tab_width * 0.14
+            )
+            tab_positions = _centered_pattern_positions(
+                mounts.hole_count, outer_w / max(mounts.hole_count, 1)
+            )
+            for px in tab_positions:
+                tab = (
+                    cq.Workplane("XY")
+                    .box(tab_width, tab_width * 0.6, tab_depth)
+                    .translate(
+                        (px, -(outer_h * 0.5 + tab_width * 0.3), -depth * 0.5 - tab_depth * 0.5)
+                    )
+                )
+                hole = (
+                    cq.Workplane("XY")
+                    .circle(hole_radius)
+                    .extrude(tab_depth + depth + 0.01)
+                    .translate((px, -(outer_h * 0.5 + tab_width * 0.3), -depth * 0.5 - tab_depth))
+                )
+                shape = shape.union(tab).cut(hole)
+        elif (
+            mounts.style == "rear_flange"
+            and mounts.hole_count > 0
+            and mounts.hole_diameter is not None
+        ):
+            flange_width = max(max(mounts.setback, 0.003), min(outer_w, outer_h) * 0.06)
+            rear_flange_outer = _shape_profile_points_2d(
+                outer_shape,
+                (outer_w + flange_width * 2.0, outer_h + flange_width * 2.0),
+                corner_radius=outer_corner_radius + flange_width,
+            )
+            rear_flange = _cq_ring_solid(
+                cq, rear_flange_outer, outer_points, max(depth * 0.12, 0.002), center=True
+            ).translate((0.0, 0.0, -depth * 0.5 - max(depth * 0.12, 0.002)))
+            shape = shape.union(rear_flange)
+
+        for cutout in cutouts:
+            if cutout.width <= 0.0 or cutout.depth <= 0.0:
+                raise ValueError("BezelCutout width and depth must be positive")
+            cut_height = cutout.width
+            cut_depth = cutout.depth
+            if cutout.edge in {"top", "bottom"}:
+                cutter = cq.Workplane("XY").box(
+                    cutout.width, cut_depth, depth + visor.thickness + 0.02
+                )
+                y = (
+                    outer_h * 0.5 - cut_depth * 0.5
+                    if cutout.edge == "top"
+                    else -outer_h * 0.5 + cut_depth * 0.5
+                )
+                cutter = cutter.translate((cutout.offset, y, 0.0))
+            else:
+                cutter = cq.Workplane("XY").box(
+                    cut_depth, cut_height, depth + visor.thickness + 0.02
+                )
+                x = (
+                    outer_w * 0.5 - cut_depth * 0.5
+                    if cutout.edge == "right"
+                    else -outer_w * 0.5 + cut_depth * 0.5
+                )
+                cutter = cutter.translate((x, cutout.offset, 0.0))
+            shape = shape.cut(cutter)
+
+        for feature in edge_features:
+            if feature.size <= 0.0:
+                continue
+            extent = (
+                feature.extent
+                if feature.extent > 0.0
+                else (outer_w if feature.edge in {"top", "bottom"} else outer_h)
+            )
+            if feature.style == "notch":
+                if feature.edge in {"top", "bottom"}:
+                    cutter = cq.Workplane("XY").box(
+                        extent, feature.size, depth + visor.thickness + 0.02
+                    )
+                    y = (
+                        outer_h * 0.5 - feature.size * 0.5
+                        if feature.edge == "top"
+                        else -outer_h * 0.5 + feature.size * 0.5
+                    )
+                    cutter = cutter.translate((feature.offset, y, 0.0))
+                else:
+                    cutter = cq.Workplane("XY").box(
+                        feature.size, extent, depth + visor.thickness + 0.02
+                    )
+                    x = (
+                        outer_w * 0.5 - feature.size * 0.5
+                        if feature.edge == "right"
+                        else -outer_w * 0.5 + feature.size * 0.5
+                    )
+                    cutter = cutter.translate((x, feature.offset, 0.0))
+                shape = shape.cut(cutter)
+                continue
+            if feature.edge in {"top", "bottom"}:
+                solid = cq.Workplane("XY").box(extent, feature.size, max(depth * 0.10, 0.0015))
+                y = (
+                    outer_h * 0.5 + feature.size * 0.5
+                    if feature.edge == "top"
+                    else -(outer_h * 0.5 + feature.size * 0.5)
+                )
+                solid = solid.translate((feature.offset, y, depth * 0.5))
+            else:
+                solid = cq.Workplane("XY").box(feature.size, extent, max(depth * 0.10, 0.0015))
+                x = (
+                    outer_w * 0.5 + feature.size * 0.5
+                    if feature.edge == "right"
+                    else -(outer_w * 0.5 + feature.size * 0.5)
+                )
+                solid = solid.translate((x, feature.offset, depth * 0.5))
+            shape = (
+                shape.union(solid)
+                if feature.style == "bead"
+                else shape.cut(solid.translate((0.0, 0.0, -max(depth * 0.04, 0.0008))))
+            )
+
+        geom = _mesh_geometry_from_cadquery_model(shape)
+        if not center:
+            geom = _mesh_geometry_shifted_to_z0(geom)
+        _adopt_mesh_geometry(self, geom)
+
+
+class WheelGeometry(MeshGeometry):
+    """
+    Build a wheel/rim/hub visual aligned to local X.
+    """
+
+    def __init__(
+        self,
+        radius: float,
+        width: float,
+        *,
+        rim: Optional[WheelRim] = None,
+        hub: Optional[WheelHub] = None,
+        face: Optional[WheelFace] = None,
+        spokes: Optional[WheelSpokes] = None,
+        bore: Optional[WheelBore] = None,
+        flange: Optional[WheelFlange] = None,
+        center: bool = True,
+    ):
+        super().__init__()
+        radius = float(radius)
+        width = float(width)
+        if radius <= 0.0 or width <= 0.0:
+            raise ValueError("radius and width must be positive")
+
+        rim = rim or WheelRim()
+        hub = hub or WheelHub(radius=radius * 0.18, width=width * 0.55)
+        face = face or WheelFace()
+        spokes = spokes or WheelSpokes(style="disc")
+        bore = bore or WheelBore(style="round", diameter=max(radius * 0.18, 0.004))
+
+        rim_outer = float(rim.outer_radius) if rim.outer_radius is not None else radius
+        rim_inner = float(rim.inner_radius) if rim.inner_radius is not None else radius * 0.68
+        if rim_inner <= 0.0 or rim_inner >= rim_outer:
+            raise ValueError("WheelRim.inner_radius must be positive and less than outer_radius")
+        if hub.radius <= 0.0 or hub.width <= 0.0 or hub.radius >= rim_inner:
+            raise ValueError("WheelHub dimensions must be positive and fit inside the rim")
+        if bore.diameter <= 0.0 or bore.diameter >= hub.radius * 2.0:
+            raise ValueError("WheelBore.diameter must fit inside the hub")
+
+        cq = require_cadquery(feature="WheelGeometry")
+        shape = _cq_annulus_x(cq, rim_outer, rim_inner, width)
+        if rim.flange_height > 1e-6 and rim.flange_thickness > 1e-6:
+            flange_inner = max(rim_outer - rim.flange_height, rim_inner + 1.0e-4)
+            lip = _cq_annulus_x(cq, rim_outer, flange_inner, rim.flange_thickness)
+            shape = shape.union(lip.translate((width * 0.5 - rim.flange_thickness * 0.5, 0.0, 0.0)))
+            shape = shape.union(
+                lip.translate((-(width * 0.5 - rim.flange_thickness * 0.5), 0.0, 0.0))
+            )
+        if rim.bead_seat_depth > 1e-6:
+            seat = _cq_annulus_x(
+                cq,
+                rim_outer,
+                max(rim_outer - rim.bead_seat_depth, rim_inner + 1.0e-4),
+                max(width * 0.22, 0.004),
+            )
+            shape = shape.cut(seat)
+
+        hub_cyl = cq.Workplane("YZ").circle(hub.radius).extrude(hub.width * 0.5, both=True)
+        shape = shape.union(hub_cyl)
+        if hub.cap_style == "domed":
+            front_cap = (
+                _loft_between_radii_z(
+                    cq,
+                    [
+                        (hub.radius, 0.0),
+                        (hub.radius * 0.82, hub.width * 0.12),
+                        (hub.radius * 0.30, hub.width * 0.28),
+                    ],
+                )
+                .rotate((0.0, 0.0, 0.0), (0.0, 1.0, 0.0), 90.0)
+                .translate((hub.width * 0.5, 0.0, 0.0))
+            )
+            shape = shape.union(front_cap)
+        elif hub.cap_style == "protruding":
+            cap = cq.Workplane("YZ").circle(hub.radius * 0.82).extrude(max(width * 0.12, 0.003))
+            shape = shape.union(cap.translate((hub.width * 0.5, 0.0, 0.0)))
+        elif hub.cap_style == "recessed":
+            pocket = cq.Workplane("YZ").circle(hub.radius * 0.55).extrude(max(width * 0.10, 0.002))
+            shape = shape.cut(
+                pocket.translate((hub.width * 0.5 - max(width * 0.10, 0.002), 0.0, 0.0))
+            )
+
+        disc_thickness = max(spokes.thickness, width * 0.08, 0.002)
+        face_outer_radius = min(
+            rim_outer - max(rim.flange_height * 0.25, radius * 0.02),
+            rim_inner + (rim_outer - rim_inner) * 0.28 + face.window_depth,
+        )
+        face_outer_radius = max(face_outer_radius, hub.radius * 1.6)
+        front_inset = _clamp(
+            face.front_inset + max(face.dish_depth, 0.0), 0.0, width * 0.5 - disc_thickness * 0.5
+        )
+        rear_inset = _clamp(face.rear_inset, 0.0, width * 0.5 - disc_thickness * 0.5)
+        disc_inner_radius = max(hub.radius * 0.78, hub.radius - max(disc_thickness * 0.35, 0.0012))
+        front_disc = _cq_annulus_x(
+            cq, face_outer_radius, disc_inner_radius, disc_thickness
+        ).translate((width * 0.5 - front_inset - disc_thickness * 0.5, 0.0, 0.0))
+        rear_disc = _cq_annulus_x(
+            cq, face_outer_radius, disc_inner_radius, disc_thickness
+        ).translate((-(width * 0.5 - rear_inset - disc_thickness * 0.5), 0.0, 0.0))
+        shape = shape.union(front_disc).union(rear_disc)
+
+        spoke_style = spokes.style
+        if spoke_style not in {"none", "disc"}:
+            spoke_count = spokes.count or (6 if spoke_style in {"straight", "solid_slots"} else 5)
+            if spoke_count < 2:
+                raise ValueError("WheelSpokes.count must be at least 2")
+            window_width = max(
+                spokes.window_radius
+                if spokes.window_radius > 0.0
+                else (rim_outer - hub.radius) * 0.09,
+                0.003,
+            )
+            slot_length = max((face_outer_radius - hub.radius) * 0.75, 0.010)
+            cut_width = width + 0.02
+            cutters: list[object] = []
+
+            def radial_slot(
+                angle_deg: float, center_radius: float, length: float, width_local: float
+            ):
+                profile = _rounded_slot_profile(length, width_local)
+                slot = (
+                    cq.Workplane("YZ")
+                    .polyline([(point[1], point[0] + center_radius) for point in profile])
+                    .close()
+                    .extrude(cut_width * 0.5, both=True)
+                    .rotate((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), angle_deg)
+                )
+                return slot
+
+            if spoke_style in {"straight", "solid_slots"}:
+                for index in range(spoke_count):
+                    cutters.append(
+                        radial_slot(
+                            360.0 * index / float(spoke_count),
+                            (hub.radius + face_outer_radius) * 0.5,
+                            slot_length,
+                            window_width * (1.5 if spoke_style == "solid_slots" else 1.0),
+                        )
+                    )
+            elif spoke_style == "split_y":
+                for index in range(spoke_count):
+                    base = 360.0 * index / float(spoke_count)
+                    cutters.append(
+                        radial_slot(
+                            base - 10.0,
+                            hub.radius + (face_outer_radius - hub.radius) * 0.44,
+                            slot_length * 0.55,
+                            window_width * 0.85,
+                        )
+                    )
+                    cutters.append(
+                        radial_slot(
+                            base + 10.0,
+                            hub.radius + (face_outer_radius - hub.radius) * 0.64,
+                            slot_length * 0.55,
+                            window_width * 0.85,
+                        )
+                    )
+            else:
+                rows = (
+                    hub.radius + (face_outer_radius - hub.radius) * 0.36,
+                    hub.radius + (face_outer_radius - hub.radius) * 0.68,
+                )
+                for row_index, center_radius in enumerate(rows):
+                    count = spoke_count * (2 if row_index == 1 else 1)
+                    for index in range(count):
+                        cutters.append(
+                            radial_slot(
+                                360.0 * index / float(count)
+                                + (180.0 / float(count) if row_index == 1 else 0.0),
+                                center_radius,
+                                slot_length * (0.30 if row_index == 0 else 0.24),
+                                window_width * 0.72,
+                            )
+                        )
+            shape = _cut_with_pattern(shape, cutters)
+
+        if hub.bolt_pattern is not None:
+            pattern = hub.bolt_pattern
+            if pattern.count < 2 or pattern.circle_diameter <= 0.0 or pattern.hole_diameter <= 0.0:
+                raise ValueError(
+                    "BoltPattern count, circle_diameter, and hole_diameter must be positive"
+                )
+            bolt_r = pattern.circle_diameter * 0.5
+            if bolt_r + pattern.hole_diameter * 0.5 >= hub.radius:
+                raise ValueError("BoltPattern holes must fit inside the hub")
+            for index in range(pattern.count):
+                angle = 2.0 * pi * index / float(pattern.count)
+                hole = (
+                    cq.Workplane("YZ")
+                    .circle(pattern.hole_diameter * 0.5)
+                    .extrude(width + 0.04, both=True)
+                    .translate((0.0, bolt_r * cos(angle), bolt_r * sin(angle)))
+                )
+                shape = shape.cut(hole)
+
+        if bore.style == "round":
+            bore_cut = (
+                cq.Workplane("YZ").circle(bore.diameter * 0.5).extrude(width + 0.04, both=True)
+            )
+        elif bore.style == "hex":
+            bore_cut = cq.Workplane("YZ").polygon(6, bore.diameter).extrude(width + 0.04, both=True)
+        else:
+            key_width = bore.key_width or bore.diameter * 0.32
+            bore_cut = (
+                cq.Workplane("YZ").circle(bore.diameter * 0.5).extrude(width + 0.04, both=True)
+            )
+            key = cq.Workplane("YZ").box(width + 0.04, key_width, bore.diameter * 0.5)
+            bore_cut = bore_cut.union(key.translate((0.0, bore.diameter * 0.25, 0.0)))
+        shape = shape.cut(bore_cut)
+
+        if flange is not None:
+            if flange.radius <= 0.0 or flange.thickness <= 0.0:
+                raise ValueError("WheelFlange radius and thickness must be positive")
+            ring_inner = max(flange.radius - flange.thickness, hub.radius * 1.05)
+            ring = _cq_annulus_x(cq, flange.radius, ring_inner, flange.thickness * 0.6)
+            bridge_len = max(flange.offset + flange.thickness * 0.6, flange.thickness * 0.8)
+            bridge_radial = max(flange.radius - rim_outer + flange.thickness * 0.35, 0.006)
+            bridge_thickness = max(flange.thickness * 0.55, 0.0015)
+            strut = cq.Workplane("XY").box(bridge_len, bridge_radial, bridge_thickness)
+            x_offsets: list[float] = []
+            if flange.side in {"front", "both"}:
+                x_offsets.append(width * 0.5 + flange.offset)
+            if flange.side in {"rear", "both"}:
+                x_offsets.append(-(width * 0.5 + flange.offset))
+            for x_offset in x_offsets:
+                ring_shape = ring.translate((x_offset, 0.0, 0.0))
+                shape = shape.union(ring_shape)
+                axial_mid = (
+                    (width * 0.5 + x_offset) * 0.5
+                    if x_offset >= 0.0
+                    else (-(width * 0.5) + x_offset) * 0.5
+                )
+                radial_mid = (rim_outer + ring_inner) * 0.5
+                for angle_deg in (0.0, 90.0, 180.0, 270.0):
+                    shape = shape.union(
+                        strut.translate((axial_mid, radial_mid, 0.0)).rotate(
+                            (0.0, 0.0, 0.0), (1.0, 0.0, 0.0), angle_deg
+                        )
+                    )
+
+        geom = _mesh_geometry_from_cadquery_model(shape)
+        if not center:
+            geom = _mesh_geometry_shifted_to_axis0(geom, 0)
+        _adopt_mesh_geometry(self, geom)
+
+
+class TireGeometry(MeshGeometry):
+    """
+    Build a tire aligned to local X.
+    """
+
+    def __init__(
+        self,
+        outer_radius: float,
+        width: float,
+        *,
+        inner_radius: Optional[float] = None,
+        carcass: Optional[TireCarcass] = None,
+        tread: Optional[TireTread] = None,
+        grooves: Sequence[TireGroove] = (),
+        sidewall: Optional[TireSidewall] = None,
+        shoulder: Optional[TireShoulder] = None,
+        center: bool = True,
+    ):
+        super().__init__()
+        outer_radius = float(outer_radius)
+        width = float(width)
+        inner_radius = float(inner_radius) if inner_radius is not None else outer_radius * 0.58
+        carcass = carcass or TireCarcass()
+        tread = tread or TireTread()
+        sidewall = sidewall or TireSidewall()
+        shoulder = shoulder or TireShoulder()
+
+        if outer_radius <= 0.0 or width <= 0.0 or inner_radius <= 0.0:
+            raise ValueError("outer_radius, width, and inner_radius must be positive")
+        if inner_radius >= outer_radius:
+            raise ValueError("inner_radius must be less than outer_radius")
+        if tread.depth < 0.0:
+            raise ValueError("TireTread.depth must be non-negative")
+        for groove in grooves:
+            if groove.width < 0.0 or groove.depth < 0.0:
+                raise ValueError("TireGroove width/depth must be non-negative")
+
+        cq = require_cadquery(feature="TireGeometry")
+        half_w = width * 0.5
+        belt_half = half_w * _clamp(carcass.belt_width_ratio, 0.12, 0.96)
+        shoulder_w = shoulder.width if shoulder.width > 1e-6 else width * 0.11
+        side_bulge = max(sidewall.bulge, carcass.sidewall_bulge, 0.0)
+        inner_crown = inner_radius * 0.82
+        if sidewall.style == "square":
+            outer_side = outer_radius
+            shoulder_radius = max(
+                outer_radius - max(shoulder.radius, tread.depth * 0.5, outer_radius * 0.01),
+                inner_radius + 1.0e-4,
+            )
+        elif sidewall.style == "flat":
+            outer_side = max(outer_radius - width * 0.08, inner_radius + 1.0e-4)
+            shoulder_radius = outer_radius
+        elif sidewall.style == "bulged":
+            outer_side = min(outer_radius + side_bulge * width, outer_radius + width * 0.12)
+            shoulder_radius = outer_radius
+        else:
+            outer_side = max(outer_radius - width * 0.04, inner_radius + 1.0e-4)
+            shoulder_radius = outer_radius
+
+        profile = [
+            (-half_w, inner_radius),
+            (-half_w * 0.92, inner_radius),
+            (
+                -half_w * 0.78,
+                max(inner_radius + (outer_side - inner_radius) * 0.28, inner_radius + 1.0e-4),
+            ),
+            (-(belt_half + shoulder_w), outer_side),
+            (-belt_half, shoulder_radius),
+            (0.0, outer_radius),
+            (belt_half, shoulder_radius),
+            (belt_half + shoulder_w, outer_side),
+            (
+                half_w * 0.78,
+                max(inner_radius + (outer_side - inner_radius) * 0.28, inner_radius + 1.0e-4),
+            ),
+            (half_w * 0.92, inner_radius),
+            (half_w, inner_radius),
+            (half_w * 0.55, inner_crown),
+            (0.0, inner_crown),
+            (-half_w * 0.55, inner_crown),
+            (-half_w, inner_radius),
+        ]
+        shape = (
+            cq.Workplane("XY")
+            .polyline(profile)
+            .close()
+            .revolve(360.0, (0.0, 0.0, 0.0), (1.0, 0.0, 0.0))
+        )
+
+        for groove in grooves:
+            if groove.width <= 1e-6 or groove.depth <= 1e-6:
+                continue
+            cutter = (
+                cq.Workplane("XY")
+                .moveTo(groove.center_offset - groove.width * 0.5, outer_radius - groove.depth)
+                .lineTo(groove.center_offset + groove.width * 0.5, outer_radius - groove.depth)
+                .lineTo(
+                    groove.center_offset + groove.width * 0.5, outer_radius + groove.depth * 1.6
+                )
+                .lineTo(
+                    groove.center_offset - groove.width * 0.5, outer_radius + groove.depth * 1.6
+                )
+                .close()
+                .revolve(360.0, (0.0, 0.0, 0.0), (1.0, 0.0, 0.0))
+            )
+            shape = shape.cut(cutter)
+
+        tread_style = tread.style
+        tread_depth = tread.depth
+        if tread_style == "circumferential" and tread_depth > 1e-6:
+            groove_count = tread.count or 3
+            band_positions = _centered_pattern_positions(
+                groove_count, max(tread.pitch or (width * 0.20), width * 0.14)
+            )
+            for pos in band_positions:
+                cutter = (
+                    cq.Workplane("XY")
+                    .moveTo(pos - width * 0.03, outer_radius - tread_depth)
+                    .lineTo(pos + width * 0.03, outer_radius - tread_depth)
+                    .lineTo(pos + width * 0.03, outer_radius + tread_depth * 1.4)
+                    .lineTo(pos - width * 0.03, outer_radius + tread_depth * 1.4)
+                    .close()
+                    .revolve(360.0, (0.0, 0.0, 0.0), (1.0, 0.0, 0.0))
+                )
+                shape = shape.cut(cutter)
+        elif tread_style == "rib" and tread_depth > 1e-6:
+            rib_count = tread.count or 3
+            rib_positions = _centered_pattern_positions(
+                rib_count, max(tread.pitch or (width * 0.20), width * 0.14)
+            )
+            for pos in rib_positions:
+                rib = (
+                    cq.Workplane("XY")
+                    .moveTo(pos - width * 0.04, outer_radius)
+                    .lineTo(pos + width * 0.04, outer_radius)
+                    .lineTo(pos + width * 0.04, outer_radius + tread_depth)
+                    .lineTo(pos - width * 0.04, outer_radius + tread_depth)
+                    .close()
+                    .revolve(360.0, (0.0, 0.0, 0.0), (1.0, 0.0, 0.0))
+                )
+                shape = shape.union(rib)
+        elif tread_style in {"block", "lug", "chevron"} and tread_depth > 1e-6:
+            circ_count = tread.count or (
+                12
+                if tread_style == "lug"
+                else max(
+                    14,
+                    int(
+                        (2.0 * pi * outer_radius) / max(tread.pitch or (width * 0.45), width * 0.24)
+                    ),
+                )
+            )
+            axial_rows = (
+                [-width * 0.22, width * 0.22]
+                if tread_style == "lug"
+                else (
+                    [-width * 0.22, 0.0, width * 0.22]
+                    if tread_style == "block"
+                    else [-width * 0.18, width * 0.18]
+                )
+            )
+            tangential = (2.0 * pi * outer_radius / float(circ_count)) * _clamp(
+                tread.land_ratio, 0.18, 0.85
+            )
+            axial_width = width * (0.14 if tread_style == "lug" else 0.12)
+            for row_index, row_x in enumerate(axial_rows):
+                for index in range(circ_count):
+                    angle_deg = 360.0 * index / float(circ_count) + (
+                        180.0 / float(circ_count) if row_index % 2 == 1 else 0.0
+                    )
+                    if tread_style == "chevron":
+                        for sign in (-1.0, 1.0):
+                            lug = (
+                                cq.Workplane("XY")
+                                .box(axial_width, tread_depth * 1.35, tangential * 0.48)
+                                .translate(
+                                    (
+                                        row_x + sign * axial_width * 0.38,
+                                        outer_radius + tread_depth * 0.16,
+                                        0.0,
+                                    )
+                                )
+                                .rotate(
+                                    (0.0, 0.0, 0.0),
+                                    (0.0, 1.0, 0.0),
+                                    tread.angle_deg * sign
+                                    if abs(tread.angle_deg) > 1e-6
+                                    else 24.0 * sign,
+                                )
+                                .rotate((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), angle_deg)
+                            )
+                            shape = shape.union(lug)
+                    else:
+                        lug = (
+                            cq.Workplane("XY")
+                            .box(
+                                axial_width,
+                                tread_depth * 1.35,
+                                tangential * (0.55 if tread_style == "lug" else 0.42),
+                            )
+                            .translate((row_x, outer_radius + tread_depth * 0.16, 0.0))
+                            .rotate((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), angle_deg)
+                        )
+                        shape = shape.union(lug)
+
+        geom = _mesh_geometry_from_cadquery_model(shape)
+        if not center:
+            geom = _mesh_geometry_shifted_to_axis0(geom, 0)
+        _adopt_mesh_geometry(self, geom)
+
+
+class BarrelHingeGeometry(MeshGeometry):
+    """
+    Build an exposed barrel hinge with two leaves around a local Z pin axis.
+    """
+
+    def __init__(
+        self,
+        length: float,
+        *,
+        leaf_width_a: float,
+        leaf_width_b: Optional[float] = None,
+        leaf_thickness: float,
+        pin_diameter: float,
+        knuckle_outer_diameter: Optional[float] = None,
+        knuckle_count: int = 5,
+        clearance: float = 0.0005,
+        open_angle_deg: float = 180.0,
+        holes_a: Optional[HingeHolePattern] = None,
+        holes_b: Optional[HingeHolePattern] = None,
+        pin: Optional[HingePinStyle] = None,
+        center: bool = True,
+    ):
+        super().__init__()
+        length = float(length)
+        leaf_width_a = float(leaf_width_a)
+        leaf_width_b = float(leaf_width_b) if leaf_width_b is not None else leaf_width_a
+        leaf_thickness = float(leaf_thickness)
+        pin_diameter = float(pin_diameter)
+        knuckle_outer_diameter = (
+            float(knuckle_outer_diameter)
+            if knuckle_outer_diameter is not None
+            else pin_diameter * 1.75
+        )
+        clearance = float(clearance)
+        open_angle_deg = float(open_angle_deg)
+        holes_a = holes_a or HingeHolePattern()
+        holes_b = holes_b or HingeHolePattern()
+        pin = pin or HingePinStyle()
+
+        if (
+            min(
+                length,
+                leaf_width_a,
+                leaf_width_b,
+                leaf_thickness,
+                pin_diameter,
+                knuckle_outer_diameter,
+            )
+            <= 0.0
+        ):
+            raise ValueError(
+                "length, leaf widths, thickness, pin_diameter, and knuckle size must be positive"
+            )
+        if knuckle_count < 3:
+            raise ValueError("knuckle_count must be at least 3")
+        if pin_diameter >= knuckle_outer_diameter:
+            raise ValueError("pin_diameter must be less than knuckle_outer_diameter")
+        segment_length = (length - clearance * float(knuckle_count - 1)) / float(knuckle_count)
+        if segment_length <= 0.0:
+            raise ValueError("clearance/knuckle_count leave no knuckle length")
+
+        cq = require_cadquery(feature="BarrelHingeGeometry")
+        leaf_overlap = min(leaf_thickness * 0.75, knuckle_outer_diameter * 0.12)
+        leaf_a = (
+            cq.Workplane("XY")
+            .box(leaf_width_a, leaf_thickness, length)
+            .translate(
+                (-(knuckle_outer_diameter * 0.5 + leaf_width_a * 0.5 - leaf_overlap), 0.0, 0.0)
+            )
+        )
+        leaf_b = (
+            cq.Workplane("XY")
+            .box(leaf_width_b, leaf_thickness, length)
+            .translate(
+                ((knuckle_outer_diameter * 0.5 + leaf_width_b * 0.5 - leaf_overlap), 0.0, 0.0)
+            )
+        )
+        leaf_b = leaf_b.rotate((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 180.0 - open_angle_deg)
+        shape = leaf_a.union(leaf_b)
+
+        z_start = -length * 0.5
+        for index in range(knuckle_count):
+            center_z = z_start + segment_length * 0.5 + index * (segment_length + clearance)
+            knuckle = (
+                cq.Workplane("XY")
+                .circle(knuckle_outer_diameter * 0.5)
+                .extrude(segment_length)
+                .translate((0.0, 0.0, center_z - segment_length * 0.5))
+            )
+            shape = shape.union(knuckle)
+
+        pin_len = length + pin.exposed_end * 2.0
+        pin_bottom = -length * 0.5 - pin.exposed_end
+        pin_shape = (
+            cq.Workplane("XY")
+            .circle(pin_diameter * 0.5)
+            .extrude(pin_len)
+            .translate((0.0, 0.0, pin_bottom))
+        )
+        if pin.head_style != "plain" and pin.head_height > 1e-6:
+            head_d = pin.head_diameter or pin_diameter * 1.6
+            head = cq.Workplane("XY").circle(head_d * 0.5).extrude(pin.head_height)
+            pin_shape = pin_shape.union(head.translate((0.0, 0.0, pin_bottom - pin.head_height)))
+            if pin.head_style != "peened":
+                pin_shape = pin_shape.union(head.translate((0.0, 0.0, pin_bottom + pin_len)))
+        shape = shape.union(pin_shape)
+
+        def _apply_holes(base_shape, pattern: HingeHolePattern, side: float):
+            if pattern.style == "none" or pattern.count <= 0:
+                return base_shape
+            if pattern.diameter is None and pattern.slot_size is None:
+                raise ValueError("HingeHolePattern requires diameter or slot_size")
+            count = pattern.count
+            z_positions = _centered_pattern_positions(
+                count,
+                pattern.pitch
+                if pattern.pitch is not None
+                else (length - pattern.edge_margin * 2.0) / max(count - 1, 1),
+            )
+            x_center = side * (
+                knuckle_outer_diameter * 0.5 + (leaf_width_a if side < 0.0 else leaf_width_b) * 0.5
+            )
+            for z_pos in z_positions:
+                if pattern.style == "slotted":
+                    if pattern.slot_size is None:
+                        raise ValueError("Slotted hinge holes require slot_size")
+                    slot_profile = _rounded_slot_profile(pattern.slot_size[0], pattern.slot_size[1])
+                    cutter = (
+                        cq.Workplane("XZ")
+                        .polyline(
+                            [(x_center + point[0], z_pos + point[1]) for point in slot_profile]
+                        )
+                        .close()
+                        .extrude(leaf_thickness + 0.01, both=True)
+                    )
+                else:
+                    hole_r = (pattern.diameter or 0.0) * 0.5
+                    cutter = (
+                        cq.Workplane("XZ")
+                        .circle(hole_r)
+                        .extrude(leaf_thickness + 0.01, both=True)
+                        .translate((x_center, 0.0, z_pos))
+                    )
+                base_shape = base_shape.cut(cutter)
+            return base_shape
+
+        shape = _apply_holes(shape, holes_a, -1.0)
+        shape = _apply_holes(shape, holes_b, 1.0)
+
+        geom = _mesh_geometry_from_cadquery_model(shape)
+        if not center:
+            geom = _mesh_geometry_shifted_to_z0(geom)
+        _adopt_mesh_geometry(self, geom)
+
+
+class PianoHingeGeometry(MeshGeometry):
+    """
+    Build a continuous piano hinge strip around a local Z pin axis.
+    """
+
+    def __init__(
+        self,
+        length: float,
+        *,
+        leaf_width_a: float,
+        leaf_width_b: Optional[float] = None,
+        leaf_thickness: float,
+        pin_diameter: float,
+        knuckle_pitch: float,
+        clearance: float = 0.0005,
+        open_angle_deg: float = 180.0,
+        holes_a: Optional[HingeHolePattern] = None,
+        holes_b: Optional[HingeHolePattern] = None,
+        pin: Optional[HingePinStyle] = None,
+        center: bool = True,
+    ):
+        knuckle_pitch = float(knuckle_pitch)
+        if knuckle_pitch <= 0.0:
+            raise ValueError("knuckle_pitch must be positive")
+        knuckle_count = max(3, int(length / knuckle_pitch))
+        if knuckle_count % 2 == 0:
+            knuckle_count += 1
+        knuckle_outer_diameter = pin_diameter * 1.55
+        base = BarrelHingeGeometry(
+            length,
+            leaf_width_a=leaf_width_a,
+            leaf_width_b=leaf_width_b,
+            leaf_thickness=leaf_thickness,
+            pin_diameter=pin_diameter,
+            knuckle_outer_diameter=knuckle_outer_diameter,
+            knuckle_count=knuckle_count,
+            clearance=clearance,
+            open_angle_deg=open_angle_deg,
+            holes_a=holes_a,
+            holes_b=holes_b,
+            pin=pin,
+            center=center,
+        )
+        _adopt_mesh_geometry(self, base)
 
 
 class SweepGeometry(MeshGeometry):
