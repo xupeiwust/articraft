@@ -365,7 +365,7 @@ def _should_rewrite_visual_meshes_to_glb(
 ) -> bool:
     if rewrite_visual_glb is not None:
         return rewrite_visual_glb
-    return True
+    return False
 
 
 def load_model_globals(

@@ -467,7 +467,7 @@ def test_successful_run_logs_all_in_cost_totals(
     assert "Total cost: $0.910000" in caplog.text
 
 
-def test_successful_run_rewrites_visual_meshes_to_glb(
+def test_successful_run_preserves_visual_meshes_as_obj_by_default(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -499,10 +499,11 @@ def test_successful_run_rewrites_visual_meshes_to_glb(
     record_dir = record_dirs[0]
     materialization_dir = tmp_path / "data" / "cache" / "record_materialization" / record_dir.name
 
-    assert "assets/meshes/part.glb" in (materialization_dir / "model.urdf").read_text(
+    assert "assets/meshes/part.obj" in (materialization_dir / "model.urdf").read_text(
         encoding="utf-8"
     )
-    assert (materialization_dir / "assets" / "meshes" / "part.glb").exists()
+    assert not (materialization_dir / "assets" / "meshes" / "part.glb").exists()
+    assert (materialization_dir / "assets" / "meshes" / "part.obj").exists()
 
 
 def test_successful_run_copies_only_referenced_mesh_assets(
@@ -537,10 +538,11 @@ def test_successful_run_copies_only_referenced_mesh_assets(
     record_dir = record_dirs[0]
     materialization_dir = tmp_path / "data" / "cache" / "record_materialization" / record_dir.name
 
-    assert "assets/meshes/part.glb" in (materialization_dir / "model.urdf").read_text(
+    assert "assets/meshes/part.obj" in (materialization_dir / "model.urdf").read_text(
         encoding="utf-8"
     )
-    assert (materialization_dir / "assets" / "meshes" / "part.glb").exists()
+    assert not (materialization_dir / "assets" / "meshes" / "part.glb").exists()
+    assert (materialization_dir / "assets" / "meshes" / "part.obj").exists()
     assert not (materialization_dir / "assets" / "meshes" / "orphan.obj").exists()
     assert not (materialization_dir / "assets" / "glb").exists()
 

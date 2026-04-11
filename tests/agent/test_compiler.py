@@ -594,7 +594,7 @@ def test_compile_urdf_report_visual_target_omits_collision_entries(tmp_path: Pat
     assert report.signal_bundle.status == "success"
 
 
-def test_compile_urdf_report_rewrites_visual_obj_meshes_to_glb(tmp_path: Path) -> None:
+def test_compile_urdf_report_preserves_visual_obj_meshes_by_default(tmp_path: Path) -> None:
     script_path = tmp_path / "model.py"
     script_path.write_text(
         "\n".join(
@@ -623,8 +623,9 @@ def test_compile_urdf_report_rewrites_visual_obj_meshes_to_glb(tmp_path: Path) -
 
     report = compile_urdf_report(script_path, run_checks=False, target="visual")
 
-    assert "assets/meshes/part.glb" in report.urdf_xml
-    assert (tmp_path / "assets" / "meshes" / "part.glb").exists()
+    assert "assets/meshes/part.obj" in report.urdf_xml
+    assert "assets/meshes/part.glb" not in report.urdf_xml
+    assert not (tmp_path / "assets" / "meshes" / "part.glb").exists()
     assert report.signal_bundle.status == "success"
 
 
@@ -661,7 +662,7 @@ def test_compile_urdf_report_auto_suffixes_managed_mesh_name_conflicts(tmp_path:
     assert report.signal_bundle.status == "success"
 
 
-def test_compile_urdf_report_can_skip_visual_glb_rewrite(tmp_path: Path) -> None:
+def test_compile_urdf_report_can_opt_in_to_visual_glb_rewrite(tmp_path: Path) -> None:
     script_path = tmp_path / "model.py"
     script_path.write_text(
         "\n".join(
@@ -692,12 +693,11 @@ def test_compile_urdf_report_can_skip_visual_glb_rewrite(tmp_path: Path) -> None
         script_path,
         run_checks=False,
         target="visual",
-        rewrite_visual_glb=False,
+        rewrite_visual_glb=True,
     )
 
-    assert "assets/meshes/part.obj" in report.urdf_xml
-    assert "assets/meshes/part.glb" not in report.urdf_xml
-    assert not (tmp_path / "assets" / "meshes" / "part.glb").exists()
+    assert "assets/meshes/part.glb" in report.urdf_xml
+    assert (tmp_path / "assets" / "meshes" / "part.glb").exists()
     assert report.signal_bundle.status == "success"
 
 
