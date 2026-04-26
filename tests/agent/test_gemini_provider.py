@@ -415,6 +415,8 @@ def test_prepare_next_request_emits_skip_for_unsupported_threshold_model() -> No
 def test_gemini_compaction_prompt_is_loaded_from_prompt_asset() -> None:
     prompt_text = _gemini_compaction_prompt_text()
     assert "Return JSON only." in prompt_text
+    assert "Do not invent missing details." in prompt_text
+    assert "return an empty array" in prompt_text
 
 
 def test_close_emits_cache_delete_event() -> None:

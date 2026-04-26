@@ -100,3 +100,5 @@ def test_compaction_prompt_section_loads_from_prompt_assets() -> None:
 
     assert prompt_path.name == "gemini_compaction.md"
     assert "Return JSON only." in prompt_text
+    assert "Use only facts supported by the provided history." in prompt_text
+    assert "Avoid duplicates, contradictions, and vague paraphrases." in prompt_text
