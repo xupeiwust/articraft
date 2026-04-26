@@ -14,9 +14,10 @@ When a `just` recipe supports optional settings, pass them as overrides before t
 - `uv run articraft-dataset --repo-root . run-batch data/batch_specs/<batch-id>.csv --concurrency 8 --resume` resumes the latest prior run for that batch spec.
 - `uv run articraft-workbench --repo-root . status` inspects the workbench store state.
 - `uv run uvicorn viewer.api.app:app --reload --host 127.0.0.1 --port 8765` starts the local API directly.
-- `uv run --group dev pytest -q` runs the current smoke-test suite.
+- `uv run --group dev pytest -q` runs the full Python regression suite.
 - `just setup` handles first-time repo setup and storage initialization.
-- `just smoke-tests` runs the smoke-test suite.
+- `just smoke-tests` runs the fast pre-push smoke suite.
+- `just test-all` runs the full Python regression suite.
 - `just compile-all` is the recommended path before `just viewer`; it now uses the faster visual-only bulk materialization path for viewer assets.
 - `just compile-all-full` runs the non-strict full bulk compile path when you need collision-inclusive URDFs without the validation-heavy strict checks.
 - `just compile-all-strict` runs the validation-heavy full compile path.

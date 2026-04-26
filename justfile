@@ -53,6 +53,16 @@ lint:
     uv run ruff check .
 
 smoke-tests:
+    uv run --group dev pytest -q \
+      tests/agent \
+      tests/storage \
+      tests/viewer/test_api.py \
+      tests/workbench \
+      tests/dataset/test_imports.py \
+      tests/sdk/test_imports.py \
+      tests/scripts/test_pre_commit_hooks.py
+
+test-all:
     uv run --group dev pytest -q
 
 perf:
