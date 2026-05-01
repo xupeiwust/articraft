@@ -24,7 +24,6 @@ def _build_openai_preview(
     model_id: str = "gpt-5.4",
     system_prompt_path: str = DESIGNER_PROMPT_NAME,
     sdk_package: str = "sdk",
-    sdk_docs_mode: str = "full",
 ) -> dict:
     return build_provider_payload_preview(
         user_content,
@@ -33,7 +32,6 @@ def _build_openai_preview(
         thinking_level="high",
         system_prompt_path=system_prompt_path,
         sdk_package=sdk_package,
-        sdk_docs_mode=sdk_docs_mode,
     )
 
 
@@ -142,20 +140,8 @@ def test_openai_prompt_resolution_and_payload_preview() -> None:
     assert "Once `run_tests()` references a visual by exact `elem_*` name" in docs_message
 
 
-def test_openai_core_payload_preview_keeps_router_bundle() -> None:
-    docs_message = _build_openai_preview(sdk_package="sdk", sdk_docs_mode="core")["input"][0][
-        "content"
-    ][0]["text"]
-    assert "## docs/sdk/references/quickstart.md" in docs_message
-    assert "## docs/sdk/references/probe-tooling.md" in docs_message
-    assert "## docs/sdk/references/testing.md" in docs_message
-
-
 def test_openai_payload_preview_includes_find_examples_tool() -> None:
-    payload = _build_openai_preview(
-        sdk_package="sdk",
-        sdk_docs_mode="full",
-    )
+    payload = _build_openai_preview(sdk_package="sdk")
 
     tool_names = {tool["name"] for tool in payload["tools"]}
     assert "compile_model" in tool_names
@@ -210,13 +196,6 @@ def test_openai_prompt_cache_key_is_stable_across_user_prompt_changes() -> None:
     second_payload = _build_openai_preview("a tower crane")
 
     assert first_payload["prompt_cache_key"] == second_payload["prompt_cache_key"]
-
-
-def test_openai_prompt_cache_key_is_stable_when_sdk_inputs_normalize_to_same_prefix() -> None:
-    full_payload = _build_openai_preview(sdk_package="sdk", sdk_docs_mode="full")
-    core_payload = _build_openai_preview(sdk_package="sdk", sdk_docs_mode="core")
-
-    assert full_payload["prompt_cache_key"] == core_payload["prompt_cache_key"]
 
 
 def test_openai_preview_rejects_removed_legacy_sdk_package() -> None:

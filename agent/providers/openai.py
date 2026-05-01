@@ -803,13 +803,14 @@ class OpenAILLM:
 
         new_items: list[dict[str, Any]] = []
         start = 0 if not self._input_items else self._last_message_count
+        had_prior_input_items = bool(self._input_items)
         for message in messages[start:]:
             if not isinstance(message, dict):
                 continue
 
             role = message.get("role")
             if role in {"user", "assistant"}:
-                if self._input_items and role == "assistant":
+                if had_prior_input_items and role == "assistant":
                     continue
                 content_parts = self._convert_message_content(message.get("content"))
                 if content_parts:

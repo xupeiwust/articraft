@@ -321,7 +321,6 @@ def _run_single_category_workflow(
             max_cost_usd=max_cost_usd,
             system_prompt_path=system_prompt_path,
             sdk_package=sdk_package,
-            sdk_docs_mode="full",
             post_success_design_audit=design_audit,
             collection="dataset",
             category_slug=normalized_category_slug,

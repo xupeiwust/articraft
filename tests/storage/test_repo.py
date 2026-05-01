@@ -113,7 +113,6 @@ def test_storage_repo_round_trips_records_collections_and_runs(tmp_path: Path) -
         prompting=PromptingSettings(
             system_prompt_file="designer_system_prompt_openai.txt",
             system_prompt_sha256="abc",
-            sdk_docs_mode="core",
         ),
         sdk=SdkSettings(sdk_package="sdk", sdk_version="workspace", sdk_fingerprint="sdk-hash"),
         environment=EnvironmentSettings(python_version="3.11.11", platform="darwin-arm64"),

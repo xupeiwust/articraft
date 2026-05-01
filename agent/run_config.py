@@ -12,7 +12,6 @@ class SingleRunSettings:
     max_turns: int
     system_prompt_path: str
     sdk_package: str
-    sdk_docs_mode: str
     openai_transport: str = "http"
     openai_reasoning_summary: str | None = "auto"
     post_success_design_audit: bool = False
@@ -27,7 +26,6 @@ class SingleRunSettings:
             "max_cost_usd": self.max_cost_usd,
             "system_prompt_path": self.system_prompt_path,
             "sdk_package": self.sdk_package,
-            "sdk_docs_mode": self.sdk_docs_mode,
             "post_success_design_audit": self.post_success_design_audit,
         }
         if self.provider == "openai":

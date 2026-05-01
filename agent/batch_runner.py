@@ -551,7 +551,6 @@ class BatchRunConfig:
     concurrency: int
     local_work_concurrency: int
     system_prompt_path: str
-    sdk_docs_mode: str
     max_cost_usd: float | None
     resume: bool
     resume_policy: str
@@ -798,7 +797,6 @@ def _settings_summary(
     concurrency: int,
     local_work_concurrency: int,
     system_prompt_path: str,
-    sdk_docs_mode: str,
     qc_blurb_path: str | None,
 ) -> dict[str, Any]:
     providers = {row.provider for row in rows}
@@ -821,7 +819,6 @@ def _settings_summary(
         "row_concurrency": concurrency,
         "subprocess_concurrency": local_work_concurrency,
         "system_prompt_path": system_prompt_path,
-        "sdk_docs_mode": sdk_docs_mode,
         "qc_blurb_path": qc_blurb_path,
     }
 
@@ -1066,7 +1063,6 @@ async def _write_run_metadata(
         concurrency=config.concurrency,
         local_work_concurrency=config.local_work_concurrency,
         system_prompt_path=config.system_prompt_path,
-        sdk_docs_mode=config.sdk_docs_mode,
         qc_blurb_path=None,
     )
     created_at = (
@@ -1336,7 +1332,6 @@ async def _run_batch_row(
             billed_cost=billed_cost,
         ),
         sdk_package=row.sdk_package,
-        sdk_docs_mode=config.sdk_docs_mode,
         openai_reasoning_summary="auto",
         label=row.label,
         tags=[],
@@ -1757,7 +1752,6 @@ def build_batch_config(
     concurrency: str | int,
     local_work_concurrency: str | int = "auto",
     system_prompt_path: str,
-    sdk_docs_mode: str = "full",
     max_cost_usd: float | None = None,
     qc_blurb_path: str | None,
     post_success_design_audit: bool = False,
@@ -1831,7 +1825,6 @@ def build_batch_config(
         concurrency=resolved_concurrency,
         local_work_concurrency=resolved_local_work_concurrency,
         system_prompt_path=system_prompt_path,
-        sdk_docs_mode=sdk_docs_mode,
         max_cost_usd=resolved_max_cost_usd,
         qc_blurb_text=qc_blurb_text,
         resume=resume,

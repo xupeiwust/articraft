@@ -929,7 +929,6 @@ def _import_item(
             if item.system_prompt_source_path is not None
             else "unknown",
             system_prompt_sha256=system_prompt_sha256,
-            sdk_docs_mode="legacy_import",
         ),
         sdk=SdkSettings(
             sdk_package=item.sdk_package,

@@ -52,7 +52,6 @@ def _make_config(tmp_path: Path) -> batch_runner.BatchRunConfig:
         concurrency=1,
         local_work_concurrency=1,
         system_prompt_path="designer_system_prompt.txt",
-        sdk_docs_mode="full",
         max_cost_usd=None,
         resume=False,
         resume_policy="failed_or_pending",

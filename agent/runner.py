@@ -105,7 +105,6 @@ from storage.trajectories import (
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-SDK_DOCS_MODE_FULL = "full"
 
 MAX_SINGLE_RUN_SLUG_LEN = 120
 
@@ -433,7 +432,6 @@ def _single_run_settings_summary(
     max_turns: int,
     system_prompt_path: str,
     sdk_package: str,
-    sdk_docs_mode: str,
     openai_transport: str,
     openai_reasoning_summary: str | None,
     post_success_design_audit: bool,
@@ -446,7 +444,6 @@ def _single_run_settings_summary(
         max_turns=max_turns,
         system_prompt_path=system_prompt_path,
         sdk_package=sdk_package,
-        sdk_docs_mode=sdk_docs_mode,
         openai_transport=openai_transport,
         openai_reasoning_summary=openai_reasoning_summary,
         post_success_design_audit=post_success_design_audit,
@@ -762,7 +759,6 @@ def create_workbench_draft_record(
     max_turns: int | None = None,
     system_prompt_path: str = "designer_system_prompt.txt",
     sdk_package: str = "sdk",
-    sdk_docs_mode: str = "full",
     openai_reasoning_summary: str | None = "auto",
     post_success_design_audit: bool = False,
     max_cost_usd: float | None = None,
@@ -838,7 +834,6 @@ def create_workbench_draft_record(
         prompting=PromptingSettings(
             system_prompt_file=loaded_system_prompt_path.name,
             system_prompt_sha256=system_prompt_sha,
-            sdk_docs_mode=sdk_docs_mode,
             post_success_design_audit=post_success_design_audit,
         ),
         sdk=SdkSettings(
@@ -921,7 +916,6 @@ def _write_success_record(
     max_turns: int,
     system_prompt_path: Path,
     sdk_package: str,
-    sdk_docs_mode: str,
     openai_reasoning_summary: str | None,
     post_success_design_audit: bool,
     max_cost_usd: float | None,
@@ -1044,7 +1038,6 @@ def _write_success_record(
         prompting=PromptingSettings(
             system_prompt_file=system_prompt_path.name,
             system_prompt_sha256=system_prompt_sha,
-            sdk_docs_mode=sdk_docs_mode,
             post_success_design_audit=post_success_design_audit,
         ),
         sdk=SdkSettings(
@@ -1194,7 +1187,6 @@ def build_provider_payload_preview(
     thinking_level: str,
     system_prompt_path: str,
     sdk_package: str = "sdk",
-    sdk_docs_mode: str = "full",
     openai_reasoning_summary: Optional[str] = "auto",
 ) -> dict:
     repo_root = Path(__file__).resolve().parents[1]
@@ -1209,7 +1201,6 @@ def build_provider_payload_preview(
     docs = load_sdk_docs_reference(
         repo_root,
         sdk_package=sdk_package,
-        docs_mode=sdk_docs_mode,
     )
     conversation = _build_first_turn_messages(
         user_content,
@@ -1225,7 +1216,6 @@ def build_provider_payload_preview(
         prompt_cache_key, prompt_cache_retention = build_openai_prompt_cache_settings(
             model_id=model_id,
             sdk_package=sdk_package,
-            sdk_docs_mode=sdk_docs_mode,
             system_prompt=system_prompt,
             sdk_docs_context=docs,
             tools=tools,
@@ -1267,7 +1257,6 @@ async def run_from_input(
     on_compaction_event: Optional[Callable[[dict[str, Any], float], None]] = None,
     on_maintenance_event: Optional[Callable[[dict[str, Any], float], None]] = None,
     sdk_package: str = "sdk",
-    sdk_docs_mode: str = "full",
     openai_reasoning_summary: Optional[str] = "auto",
     post_success_design_audit: bool = False,
     max_cost_usd: float | None = None,
@@ -1297,7 +1286,6 @@ async def run_from_input(
         display_enabled=display_enabled,
         on_turn_start=on_turn_start,
         sdk_package=sdk_package,
-        sdk_docs_mode=sdk_docs_mode,
         openai_reasoning_summary=openai_reasoning_summary,
         post_success_design_audit=post_success_design_audit,
         max_cost_usd=max_cost_usd,
@@ -1338,7 +1326,6 @@ async def _execute_single_run(
     on_compaction_event: Optional[Callable[[dict[str, Any], float], None]] = None,
     on_maintenance_event: Optional[Callable[[dict[str, Any], float], None]] = None,
     sdk_package: str = "sdk",
-    sdk_docs_mode: str = "full",
     openai_reasoning_summary: Optional[str] = "auto",
     post_success_design_audit: bool = False,
     max_cost_usd: float | None = None,
@@ -1393,7 +1380,6 @@ async def _execute_single_run(
         max_turns=resolved_max_turns,
         system_prompt_path=system_prompt_path,
         sdk_package=sdk_package,
-        sdk_docs_mode=sdk_docs_mode,
         openai_transport=openai_transport,
         openai_reasoning_summary=openai_reasoning_summary,
         post_success_design_audit=resolved_post_success_design_audit,
@@ -1445,7 +1431,6 @@ async def _execute_single_run(
                         max_turns=run_settings.max_turns,
                         system_prompt_path=run_settings.system_prompt_path,
                         sdk_package=run_settings.sdk_package,
-                        sdk_docs_mode=run_settings.sdk_docs_mode,
                         openai_transport=run_settings.openai_transport,
                         openai_reasoning_summary=run_settings.openai_reasoning_summary,
                         post_success_design_audit=run_settings.post_success_design_audit,
@@ -1493,7 +1478,6 @@ async def _execute_single_run(
                     max_turns=resolved_max_turns,
                     system_prompt_path=system_prompt_path,
                     sdk_package=sdk_package,
-                    sdk_docs_mode=sdk_docs_mode,
                     openai_transport=openai_transport,
                     openai_reasoning_summary=openai_reasoning_summary,
                     post_success_design_audit=resolved_post_success_design_audit,
@@ -1528,7 +1512,6 @@ async def _execute_single_run(
             on_maintenance_event=on_maintenance_event,
             checkpoint_urdf_path=resolved_context.checkpoint_urdf_path,
             sdk_package=sdk_package,
-            sdk_docs_mode=sdk_docs_mode,
             openai_reasoning_summary=openai_reasoning_summary,
             post_success_design_audit=resolved_post_success_design_audit,
             max_cost_usd=max_cost_usd,
@@ -1642,7 +1625,6 @@ async def _execute_single_run(
             max_turns=resolved_max_turns,
             system_prompt_path=loaded_system_prompt_path,
             sdk_package=sdk_package,
-            sdk_docs_mode=sdk_docs_mode,
             openai_reasoning_summary=openai_reasoning_summary,
             post_success_design_audit=resolved_post_success_design_audit,
             max_cost_usd=max_cost_usd,
@@ -1732,7 +1714,6 @@ async def _execute_single_run(
                     max_turns=run_settings.max_turns,
                     system_prompt_path=run_settings.system_prompt_path,
                     sdk_package=run_settings.sdk_package,
-                    sdk_docs_mode=run_settings.sdk_docs_mode,
                     openai_transport=run_settings.openai_transport,
                     openai_reasoning_summary=run_settings.openai_reasoning_summary,
                     post_success_design_audit=run_settings.post_success_design_audit,
@@ -1777,7 +1758,6 @@ async def _run_from_input_impl(
     display_enabled: Optional[bool] = None,
     on_turn_start: Optional[Callable[[int], None]] = None,
     sdk_package: str = "sdk",
-    sdk_docs_mode: str = "full",
     openai_reasoning_summary: Optional[str] = "auto",
     post_success_design_audit: bool = False,
     max_cost_usd: float | None = None,
@@ -1851,7 +1831,6 @@ async def _run_from_input_impl(
         display_enabled=display_enabled,
         on_turn_start=on_turn_start,
         sdk_package=sdk_package,
-        sdk_docs_mode=sdk_docs_mode,
         openai_reasoning_summary=openai_reasoning_summary,
         post_success_design_audit=post_success_design_audit,
         max_cost_usd=max_cost_usd,
@@ -1941,7 +1920,6 @@ async def rerun_record_in_place(
         prompting.get("system_prompt_file"),
         "designer_system_prompt.txt",
     )
-    sdk_docs_mode = _first_string(prompting.get("sdk_docs_mode"), "full")
     sdk_package = normalize_sdk_package(
         sdk_package
         if sdk_package is not None
@@ -2045,7 +2023,6 @@ async def rerun_record_in_place(
         system_prompt_path=system_prompt_path,
         display_enabled=display_enabled,
         sdk_package=sdk_package,
-        sdk_docs_mode=sdk_docs_mode,
         openai_reasoning_summary=openai_reasoning_summary,
         post_success_design_audit=post_success_design_audit,
         max_cost_usd=resolved_max_cost_usd,
@@ -2274,7 +2251,6 @@ def main(argv: list[str] | None = None) -> int:
             thinking_level=args.thinking,
             system_prompt_path=args.system_prompt,
             sdk_package=sdk_package,
-            sdk_docs_mode=SDK_DOCS_MODE_FULL,
             openai_reasoning_summary=openai_reasoning_summary,
         )
         text = json.dumps(payload, indent=args.dump_provider_payload_indent, ensure_ascii=False)
@@ -2310,7 +2286,6 @@ def main(argv: list[str] | None = None) -> int:
             max_turns=args.max_turns,
             system_prompt_path=args.system_prompt,
             sdk_package=sdk_package,
-            sdk_docs_mode=SDK_DOCS_MODE_FULL,
             openai_reasoning_summary=openai_reasoning_summary,
             post_success_design_audit=args.design_audit,
             max_cost_usd=max_cost_usd,

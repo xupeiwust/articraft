@@ -30,9 +30,6 @@ from agent.prompts import (
     load_system_prompt_text,
 )
 from agent.prompts import (
-    normalize_sdk_docs_mode as _normalize_sdk_docs_mode,
-)
-from agent.prompts import (
     normalize_sdk_package as _normalize_sdk_package,
 )
 from agent.providers.base import ProviderClient
@@ -250,7 +247,6 @@ def build_openai_prompt_cache_settings(
     *,
     model_id: str,
     sdk_package: str,
-    sdk_docs_mode: str,
     system_prompt: str,
     sdk_docs_context: str,
     tools: list[dict[str, Any]],
@@ -266,7 +262,6 @@ def build_openai_prompt_cache_settings(
         return None, retention
 
     normalized_sdk_package = _normalize_sdk_package(sdk_package)
-    _normalize_sdk_docs_mode(sdk_docs_mode)
     prefix = (os.environ.get("OPENAI_PROMPT_CACHE_KEY_PREFIX") or "").strip()
     key_payload = {
         "provider": "openai",
@@ -312,7 +307,6 @@ class ArticraftAgent:
         on_maintenance_event: Optional[Callable[[dict[str, Any], float], None]] = None,
         checkpoint_urdf_path: Optional[Path] = None,
         sdk_package: str = "sdk",
-        sdk_docs_mode: str = "full",
         openai_reasoning_summary: Optional[str] = "auto",
         post_success_design_audit: bool = False,
         max_cost_usd: float | None = None,
@@ -320,9 +314,7 @@ class ArticraftAgent:
     ):
         self.file_path = file_path
         self.sdk_package = _normalize_sdk_package(sdk_package)
-        self.sdk_docs_mode = _normalize_sdk_docs_mode(sdk_docs_mode)
         self.runtime_limits = runtime_limits
-        self._seen_compile_signal_sigs: set[str] = set()
         self._seen_tool_error_sigs: set[str] = set()
         self._seen_find_example_paths: set[str] = set()
         self._seen_exact_geometry_contract_sigs: set[str] = set()
@@ -399,13 +391,11 @@ class ArticraftAgent:
         self.sdk_docs_context = load_sdk_docs_reference(
             repo_root,
             sdk_package=self.sdk_package,
-            docs_mode=self.sdk_docs_mode,
         )
         if self.provider == "openai":
             prompt_cache_key, prompt_cache_retention = build_openai_prompt_cache_settings(
                 model_id=actual_model_id,
                 sdk_package=self.sdk_package,
-                sdk_docs_mode=self.sdk_docs_mode,
                 system_prompt=self.system_prompt,
                 sdk_docs_context=self.sdk_docs_context,
                 tools=self.tool_registry.get_tool_schemas(),
@@ -602,28 +592,6 @@ class ArticraftAgent:
             "Treat that compile result as authoritative unless you are about to edit code for one specific unresolved defect.\n\n"
             f"{self._render_compile_tool_output(bundle)}"
         )
-
-    def _maybe_inject_compile_signals(
-        self,
-        conversation: list[dict],
-        *,
-        bundle: CompileSignalBundle,
-    ) -> bool:
-        warning_signals = [signal for signal in bundle.signals if signal.severity == "warning"]
-        if not warning_signals:
-            return False
-
-        sticky_warning = any(signal.kind == "disconnected_geometry" for signal in warning_signals)
-        sig = self._compile_signal_signature(bundle)
-        if not sticky_warning and sig in self._seen_compile_signal_sigs:
-            return False
-        self._seen_compile_signal_sigs.add(sig)
-
-        msg = {"role": "user", "content": render_compile_signals(bundle)}
-        conversation.append(msg)
-        if self.trace_writer:
-            self.trace_writer.write_message(msg)
-        return True
 
     def _maybe_inject_edit_code_guidance(
         self,

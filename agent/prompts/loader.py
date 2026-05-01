@@ -12,10 +12,6 @@ OPENAI_DESIGNER_PROMPT_NAME = "designer_system_prompt_openai.txt"
 GEMINI_DESIGNER_PROMPT_NAME = "designer_system_prompt_gemini.txt"
 OPENROUTER_DESIGNER_PROMPT_NAME = "designer_system_prompt_openrouter.txt"
 
-SUPPORTED_SDK_DOCS_MODES = {"full", "core", "none"}
-LEGACY_SDK_DOCS_MODE_ALIASES = {
-    "legacy_import": "full",
-}
 PROMPTS_ROOT = Path(__file__).resolve().parent
 GENERATED_PROMPTS_DIR = PROMPTS_ROOT / "generated"
 SECTIONS_DIR = PROMPTS_ROOT / "sections"
@@ -26,17 +22,6 @@ PROMPTING_ROOT = PROMPTS_ROOT
 def normalize_sdk_package(sdk_package: str) -> str:
     candidate = str(sdk_package or "sdk").strip().lower()
     return get_sdk_profile(candidate).package_name
-
-
-def normalize_sdk_docs_mode(docs_mode: str) -> str:
-    candidate = (docs_mode or "full").strip().lower()
-    candidate = LEGACY_SDK_DOCS_MODE_ALIASES.get(candidate, candidate)
-    if candidate not in SUPPORTED_SDK_DOCS_MODES:
-        raise ValueError(
-            f"Unsupported SDK docs mode: {docs_mode!r}. "
-            f"Expected one of {sorted(SUPPORTED_SDK_DOCS_MODES)!r}."
-        )
-    return candidate
 
 
 def resolve_system_prompt_path(
@@ -111,12 +96,10 @@ def load_sdk_docs_reference(
     repo_root: Path,
     *,
     sdk_package: str = "sdk",
-    docs_mode: str = "full",
 ) -> str:
     return _load_sdk_docs_reference(
         repo_root,
         sdk_package=sdk_package,
-        docs_mode=docs_mode,
     )
 
 

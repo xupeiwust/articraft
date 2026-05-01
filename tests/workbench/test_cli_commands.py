@@ -86,7 +86,6 @@ def test_workbench_rerun_record_command(
             max_turns=30,
             system_prompt_path="designer_system_prompt.txt",
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label="hinge rerun",
             tags=["hinge"],
         )
@@ -139,7 +138,6 @@ def test_workbench_rerun_record_command_accepts_model_and_thinking_overrides(
             max_turns=30,
             system_prompt_path="designer_system_prompt.txt",
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label="mixer rerun",
             tags=["mixer"],
         )
@@ -197,7 +195,6 @@ def test_workbench_rerun_record_command_prefers_source_run_thinking_parameters(
             max_turns=30,
             system_prompt_path="designer_system_prompt.txt",
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label="keyboard rerun",
             tags=["keyboard"],
         )
@@ -253,7 +250,6 @@ def test_workbench_rerun_record_command_accepts_sdk_override(
             max_turns=30,
             system_prompt_path="designer_system_prompt.txt",
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label="boom arm rerun",
             tags=["boom"],
         )
@@ -290,7 +286,7 @@ def test_workbench_rerun_record_command_accepts_sdk_override(
     assert "search_index=" in captured
 
 
-def test_workbench_rerun_record_command_accepts_legacy_sdk_docs_mode(
+def test_workbench_rerun_record_command_ignores_legacy_sdk_docs_mode(
     fake_agent: None,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -308,7 +304,6 @@ def test_workbench_rerun_record_command_accepts_legacy_sdk_docs_mode(
             max_turns=30,
             system_prompt_path="designer_system_prompt.txt",
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label="coffee rerun",
             tags=["coffee"],
         )
@@ -357,7 +352,6 @@ def test_workbench_rerun_record_command_replaces_cached_materialization_outputs(
             max_turns=30,
             system_prompt_path="designer_system_prompt.txt",
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label="turret rerun",
             tags=["turret"],
         )
@@ -515,7 +509,6 @@ def test_workbench_rerun_record_command_accepts_design_audit_override(
             max_turns=30,
             system_prompt_path="designer_system_prompt.txt",
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label="coffee rerun",
             tags=["coffee"],
         )
@@ -563,7 +556,6 @@ def test_workbench_rerun_record_command_reuses_stored_max_cost_usd_and_accepts_o
             max_cost_usd=2.5,
             system_prompt_path="designer_system_prompt.txt",
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label="coffee rerun",
             tags=["coffee"],
         )
@@ -753,7 +745,6 @@ def test_workbench_rerun_record_warns_when_post_commit_hook_missing(
             max_turns=30,
             system_prompt_path="designer_system_prompt.txt",
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label="hinge rerun",
             tags=["hinge"],
         )

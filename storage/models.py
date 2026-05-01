@@ -119,7 +119,6 @@ class GenerationSettings:
 class PromptingSettings:
     system_prompt_file: str
     system_prompt_sha256: str | None
-    sdk_docs_mode: str
     post_success_design_audit: bool = False
 
     def to_dict(self) -> dict[str, Any]:

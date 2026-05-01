@@ -192,7 +192,6 @@ def test_workbench_run_and_rerun_persist_runtime_artifacts(
             max_turns=30,
             system_prompt_path=DESIGNER_PROMPT_NAME,
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label="gearbox try",
             tags=["gear", "test"],
         )
@@ -335,7 +334,6 @@ def test_run_from_input_stamps_author_and_rerun_preserves_existing_author(
             max_turns=10,
             system_prompt_path=DESIGNER_PROMPT_NAME,
             sdk_package="sdk",
-            sdk_docs_mode="full",
         )
     )
 
@@ -396,7 +394,6 @@ def test_over_budget_run_persists_failed_run_metadata_without_record(
             max_cost_usd=0.5,
             system_prompt_path=DESIGNER_PROMPT_NAME,
             sdk_package="sdk",
-            sdk_docs_mode="full",
         )
     )
 
@@ -448,7 +445,6 @@ def test_successful_run_logs_all_in_cost_totals(
                 max_turns=30,
                 system_prompt_path=DESIGNER_PROMPT_NAME,
                 sdk_package="sdk",
-                sdk_docs_mode="full",
                 label=None,
                 tags=[],
             )
@@ -480,7 +476,6 @@ def test_successful_run_preserves_visual_meshes_as_obj_by_default(
             max_turns=30,
             system_prompt_path=DESIGNER_PROMPT_NAME,
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label=None,
             tags=[],
         )
@@ -519,7 +514,6 @@ def test_successful_run_copies_only_referenced_mesh_assets(
             max_turns=30,
             system_prompt_path=DESIGNER_PROMPT_NAME,
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label=None,
             tags=[],
         )
@@ -559,7 +553,6 @@ def test_dataset_run_and_rerun_preserve_dataset_metadata(
             max_turns=30,
             system_prompt_path=DESIGNER_PROMPT_NAME,
             sdk_package="sdk",
-            sdk_docs_mode="full",
             collection="dataset",
             category_slug="crane_tower",
             dataset_id="ds_crane_tower_0001",
@@ -686,7 +679,6 @@ def test_workbench_run_succeeds_when_persisted_input_image_disappears(
             max_turns=30,
             system_prompt_path=DESIGNER_PROMPT_NAME,
             sdk_package="sdk",
-            sdk_docs_mode="full",
             label="lamp try",
             tags=["lamp"],
         )
