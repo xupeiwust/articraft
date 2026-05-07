@@ -399,3 +399,14 @@ uv run articraft-dataset --repo-root . run-batch data/batch_specs/<batch-id>.csv
 ```
 
 See Section 6 for the batch CSV schema, resume policies, and run-state details.
+
+## 8. Citation
+
+```bibtex
+@misc{articraft2026,
+  title={{Articraft}: Agentic articulated object generation, dataset curation, and workbench tooling},
+  author={{Articraft contributors}},
+  howpublished={\url{https://github.com/mattzh72/articraft}},
+  year={2026}
+}
+```
