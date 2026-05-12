@@ -131,3 +131,31 @@ def test_run_smoke_tests_invokes_pytest(monkeypatch: pytest.MonkeyPatch) -> None
             False,
         )
     ]
+
+
+def test_run_data_format_validation_invokes_dataset_cli(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[list[str], object, bool]] = []
+
+    def _fake_run(cmd: list[str], cwd, check: bool) -> subprocess.CompletedProcess[str]:
+        calls.append((cmd, cwd, check))
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(pre_commit_hooks.subprocess, "run", _fake_run)
+
+    exit_code = pre_commit_hooks.run_data_format_validation()
+
+    assert exit_code == 0
+    assert calls == [
+        (
+            [
+                "uv",
+                "run",
+                "articraft-dataset",
+                "--repo-root",
+                ".",
+                "validate-format",
+            ],
+            pre_commit_hooks.REPO_ROOT,
+            False,
+        )
+    ]

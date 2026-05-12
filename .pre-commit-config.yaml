@@ -17,6 +17,13 @@ repos:
         language: system
         pass_filenames: true
         stages: [pre-commit]
+      - id: validate-data-format
+        name: validate canonical data format
+        entry: uv run python scripts/pre_commit_hooks.py data-format
+        language: system
+        pass_filenames: false
+        files: ^data/
+        stages: [pre-commit]
       - id: ruff-format
         name: ruff format
         entry: uv run ruff format --force-exclude

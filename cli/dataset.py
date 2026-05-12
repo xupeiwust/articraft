@@ -15,6 +15,7 @@ from agent.tools import build_initial_user_content, resolve_image_path
 from cli.common import add_data_root_argument, warn_if_post_commit_hook_missing
 from storage.categories import CategoryStore
 from storage.collections import CollectionStore
+from storage.data_validation import validate_data_format
 from storage.dataset_workflow import (
     category_title_from_slug as _shared_category_title_from_slug,
 )
@@ -840,6 +841,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     subparsers.add_parser("validate", help="Validate record-local dataset entries.")
     subparsers.add_parser(
+        "validate-format",
+        help="Validate canonical checked-in data structure.",
+    )
+    subparsers.add_parser(
         "sync-authors",
         help="Populate record.json author fields from the git author that added each record's model.py.",
     )
@@ -1386,6 +1391,22 @@ def main(argv: list[str] | None = None) -> int:
                 print(error)
             return 1
         print(f"Dataset valid: entries={len(datasets.list_entries())}")
+        return 0
+
+    if args.command == "validate-format":
+        result = validate_data_format(repo)
+        if result.errors:
+            for error in result.errors:
+                print(error)
+            return 1
+        print(
+            "Data format valid: "
+            f"categories={result.category_count} "
+            f"batch_specs={result.batch_spec_count} "
+            f"records={result.record_count} "
+            f"dataset_entries={result.dataset_entry_count} "
+            f"skipped_local_records={result.skipped_local_record_count}"
+        )
         return 0
 
     if args.command == "sync-authors":

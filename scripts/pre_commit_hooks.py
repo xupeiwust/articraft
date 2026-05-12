@@ -153,9 +153,21 @@ def run_smoke_tests() -> int:
     return result.returncode
 
 
+def run_data_format_validation() -> int:
+    result = subprocess.run(
+        ["uv", "run", "articraft-dataset", "--repo-root", ".", "validate-format"],
+        cwd=REPO_ROOT,
+        check=False,
+    )
+    return result.returncode
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
-        print("Usage: pre_commit_hooks.py <forbidden-paths|secrets|smoke-tests> [paths...]")
+        print(
+            "Usage: pre_commit_hooks.py "
+            "<forbidden-paths|secrets|data-format|smoke-tests> [paths...]"
+        )
         return 2
 
     command = argv[1]
@@ -164,6 +176,8 @@ def main(argv: list[str]) -> int:
         return detect_forbidden_paths(paths)
     if command == "secrets":
         return detect_secrets(paths)
+    if command == "data-format":
+        return run_data_format_validation()
     if command == "smoke-tests":
         return run_smoke_tests()
 

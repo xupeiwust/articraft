@@ -39,7 +39,7 @@ setup:
     fi
     uv run articraft-dataset --repo-root . init-storage
     uv run articraft-workbench --repo-root . init-storage
-    uv run articraft-dataset --repo-root . validate
+    uv run articraft-dataset --repo-root . validate-format
     uv run articraft-dataset --repo-root . build-manifest
 
 hooks-install:
@@ -231,7 +231,10 @@ wb-category prompt:
     exec "${cmd[@]}"
 
 dataset-validate:
-    uv run articraft-dataset --repo-root . validate
+    uv run articraft-dataset --repo-root . validate-format
+
+data-check:
+    uv run articraft-dataset --repo-root . validate-format
 
 dataset-manifest:
     uv run articraft-dataset --repo-root . build-manifest
