@@ -179,7 +179,7 @@ data/batch_specs/<batch-id>.csv
 with the current v1 header:
 
 ```csv
-row_id,category_slug,category_title,prompt,provider,model_id,thinking_level,max_turns,max_cost_usd,label,design_audit
+row_id,category_slug,category_title,prompt,provider,model_id,thinking_level,max_turns,max_cost_usd,label
 ```
 
 ### 6.2 Fill the CSV
@@ -198,7 +198,6 @@ Each row is one dataset generation job.
 | `max_turns` | Yes | Positive integer turn cap for the row. |
 | `max_cost_usd` | No | Optional positive per-row USD budget. If blank, the row inherits the batch CLI flag or `ARTICRAFT_MAX_COST_USD`. |
 | `label` | No | Optional free-form label for your own tracking. |
-| `design_audit` | No | Legacy compatibility column. Leave blank or `false` for new specs. |
 
 Batch CSV v1 notes:
 
@@ -209,9 +208,9 @@ Batch CSV v1 notes:
 Example:
 
 ```csv
-row_id,category_slug,category_title,prompt,provider,model_id,thinking_level,max_turns,max_cost_usd,label,design_audit
-hinge_01,hinge,Hinge,"Create a steel door hinge with two rectangular leaves and a center pin.",openai,gpt-5.4,high,12,1.5,baseline,false
-hinge_02,hinge,Hinge,"Create a compact cabinet hinge with offset leaves and a short pin.",gemini,gemini-3-flash-preview,med,10,,compact,false
+row_id,category_slug,category_title,prompt,provider,model_id,thinking_level,max_turns,max_cost_usd,label
+hinge_01,hinge,Hinge,"Create a steel door hinge with two rectangular leaves and a center pin.",openai,gpt-5.4,high,12,1.5,baseline
+hinge_02,hinge,Hinge,"Create a compact cabinet hinge with offset leaves and a short pin.",gemini,gemini-3-flash-preview,med,10,,compact
 ```
 
 ### 6.3 Run the first pass
@@ -235,7 +234,6 @@ Useful execution controls:
 - `--row-concurrency`: maximum number of live batch rows at once; use `auto`, `max`, or a positive integer
 - `--subprocess-concurrency`: maximum number of compile/QC/probe subprocess-heavy operations at once; use `auto`, `max`, or a positive integer
 - `--max-cost-usd`: default per-row USD budget for rows whose `max_cost_usd` CSV cell is blank
-- The legacy `--design-audit` flag remains available for older experiments; keep it disabled for new dataset runs.
 
 If any row fails, the batch exits non-zero. That is expected. The normal recovery path is to fix the issue and rerun with `--resume`.
 
@@ -277,7 +275,7 @@ Important resume rules:
 
 - keep the CSV filename stable so the `batch_spec_id` stays the same
 - keep `row_id` stable; changing or reordering implicit row ids can break resume matching
-- by default, resume rejects spec changes for `category_slug`, `prompt`, `provider`, `model_id`, `thinking_level`, `max_turns`, `max_cost_usd`, and the legacy `design_audit` field
+- by default, resume rejects spec changes for `category_slug`, `prompt`, `provider`, `model_id`, `thinking_level`, `max_turns`, `max_cost_usd`
 - if a row already produced a durable record but the cached state says `running`, resume reconciles that success instead of rerunning it
 
 You can bypass the spec-compatibility check:

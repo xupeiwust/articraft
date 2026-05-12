@@ -491,52 +491,6 @@ def test_workbench_init_record_uses_model_specific_default_max_turns(
     assert provenance["generation"]["max_turns"] == GEMINI_3_FLASH_DEFAULT_MAX_TURNS
 
 
-def test_workbench_rerun_record_command_accepts_design_audit_override(
-    fake_agent: None,
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    repo_root = tmp_path
-    exit_code = asyncio.run(
-        runner.run_from_input(
-            "make a coffee machine",
-            prompt_text="make a coffee machine",
-            display_prompt="make a coffee machine",
-            repo_root=repo_root,
-            image_path=None,
-            provider="openai",
-            thinking_level="high",
-            max_turns=30,
-            system_prompt_path="designer_system_prompt.txt",
-            sdk_package="sdk",
-            label="coffee rerun",
-            tags=["coffee"],
-        )
-    )
-    assert exit_code == 0
-    capsys.readouterr()
-
-    record_dir = next((repo_root / "data" / "records").iterdir())
-    assert (
-        workbench_main(
-            [
-                "--repo-root",
-                str(repo_root),
-                "rerun-record",
-                str(record_dir),
-                "--no-design-audit",
-            ]
-        )
-        == 0
-    )
-
-    provenance = json.loads((record_dir / "provenance.json").read_text(encoding="utf-8"))
-    assert provenance["prompting"]["post_success_design_audit"] is False
-    output = capsys.readouterr().out
-    assert f"reran record_id={record_dir.name}" in output
-    assert "search_index=" in output
-
-
 def test_workbench_rerun_record_command_reuses_stored_max_cost_usd_and_accepts_override(
     fake_agent: None,
     tmp_path: Path,
@@ -594,40 +548,6 @@ def test_workbench_rerun_record_command_reuses_stored_max_cost_usd_and_accepts_o
     )
     provenance = json.loads((record_dir / "provenance.json").read_text(encoding="utf-8"))
     assert provenance["generation"]["max_cost_usd"] == 1.0
-
-
-def test_workbench_init_record_command_accepts_design_audit_override(
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    repo_root = tmp_path
-
-    assert (
-        workbench_main(
-            [
-                "--repo-root",
-                str(repo_root),
-                "init-record",
-                "build a folding reading lamp",
-                "--provider",
-                "openai",
-                "--model-id",
-                "gpt-5.4",
-                "--thinking-level",
-                "high",
-                "--no-design-audit",
-            ]
-        )
-        == 0
-    )
-
-    records = sorted((repo_root / "data" / "records").iterdir())
-    assert len(records) == 1
-    record_dir = records[0]
-
-    provenance = json.loads((record_dir / "provenance.json").read_text(encoding="utf-8"))
-    assert provenance["prompting"]["post_success_design_audit"] is False
-    assert f"initialized record_id={record_dir.name}" in capsys.readouterr().out
 
 
 def test_workbench_init_record_command_uses_single_scaffold(

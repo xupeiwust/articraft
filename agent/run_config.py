@@ -14,7 +14,6 @@ class SingleRunSettings:
     sdk_package: str
     openai_transport: str = "http"
     openai_reasoning_summary: str | None = "auto"
-    post_success_design_audit: bool = False
     max_cost_usd: float | None = None
 
     def to_summary(self) -> dict[str, Any]:
@@ -26,7 +25,6 @@ class SingleRunSettings:
             "max_cost_usd": self.max_cost_usd,
             "system_prompt_path": self.system_prompt_path,
             "sdk_package": self.sdk_package,
-            "post_success_design_audit": self.post_success_design_audit,
         }
         if self.provider == "openai":
             summary["openai_transport"] = self.openai_transport

@@ -16,7 +16,6 @@ concurrency := "auto"
 row_concurrency := ""
 subprocess_concurrency := ""
 local_work_concurrency := ""
-design_audit := ""
 max_cost_usd := ""
 resume := ""
 resume_policy := ""
@@ -74,7 +73,6 @@ wb prompt:
     model={{ quote(model) }}
     thinking={{ quote(thinking) }}
     image={{ quote(image) }}
-    design_audit={{ quote(design_audit) }}
     max_cost_usd_value={{ quote(max_cost_usd) }}
     if [ -z "$model" ]; then
       model="gpt-5.5-2026-04-23"
@@ -105,11 +103,6 @@ wb prompt:
       --model "$model"
       --thinking "$thinking"
     )
-    if [ "$design_audit" = "false" ]; then
-      cmd+=(--no-design-audit)
-    elif [ "$design_audit" = "true" ]; then
-      cmd+=(--design-audit)
-    fi
     if [ -n "$image" ]; then
       cmd+=(--image "$image")
     fi
@@ -124,7 +117,6 @@ wb-init prompt:
     model={{ quote(model) }}
     thinking={{ quote(thinking) }}
     image={{ quote(image) }}
-    design_audit={{ quote(design_audit) }}
     max_cost_usd_value={{ quote(max_cost_usd) }}
     if [ -z "$model" ]; then
       model="gpt-5.5-2026-04-23"
@@ -162,11 +154,6 @@ wb-init prompt:
     if [ -n "$max_cost_usd_value" ]; then
       cmd+=(--max-cost-usd "$max_cost_usd_value")
     fi
-    if [ "$design_audit" = "false" ]; then
-      cmd+=(--no-design-audit)
-    elif [ "$design_audit" = "true" ]; then
-      cmd+=(--design-audit)
-    fi
     exec "${cmd[@]}"
 
 wb-category prompt:
@@ -175,7 +162,6 @@ wb-category prompt:
     model={{ quote(model) }}
     thinking={{ quote(thinking) }}
     image={{ quote(image) }}
-    design_audit={{ quote(design_audit) }}
     max_cost_usd_value={{ quote(max_cost_usd) }}
     category={{ quote(category) }}
     dataset_id={{ quote(dataset_id) }}
@@ -222,11 +208,6 @@ wb-category prompt:
     fi
     if [ -n "$max_cost_usd_value" ]; then
       cmd+=(--max-cost-usd "$max_cost_usd_value")
-    fi
-    if [ "$design_audit" = "false" ]; then
-      cmd+=(--no-design-audit)
-    elif [ "$design_audit" = "true" ]; then
-      cmd+=(--design-audit)
     fi
     exec "${cmd[@]}"
 
@@ -389,7 +370,6 @@ dataset-batch spec_path="":
     spec_path={{ quote(spec_path) }}
     row_concurrency_value={{ quote(row_concurrency) }}
     legacy_concurrency_value={{ quote(concurrency) }}
-    design_audit_value={{ quote(design_audit) }}
     max_cost_usd_value={{ quote(max_cost_usd) }}
     subprocess_concurrency_value={{ quote(subprocess_concurrency) }}
     legacy_local_work_value={{ quote(local_work_concurrency) }}
@@ -427,11 +407,6 @@ dataset-batch spec_path="":
     elif [ "$allow_resume_spec_mismatch_value" = "false" ]; then
       extra_args+=(--no-allow-resume-spec-mismatch)
     fi
-    if [ "$design_audit_value" = "false" ]; then
-      exec uv run articraft-dataset --repo-root . run-batch "$spec_path" "${extra_args[@]}" --no-design-audit
-    elif [ "$design_audit_value" = "true" ]; then
-      exec uv run articraft-dataset --repo-root . run-batch "$spec_path" "${extra_args[@]}" --design-audit
-    fi
     exec uv run articraft-dataset --repo-root . run-batch "$spec_path" "${extra_args[@]}"
 
 batch-spec-new:
@@ -448,7 +423,7 @@ batch-spec-new:
       exit 1
     fi
     mkdir -p "$(dirname "$spec_path")"
-    printf '%s\n' 'row_id,category_slug,category_title,prompt,provider,model_id,thinking_level,max_turns,max_cost_usd,label,design_audit' >"$spec_path"
+    printf '%s\n' 'row_id,category_slug,category_title,prompt,provider,model_id,thinking_level,max_turns,max_cost_usd,label' >"$spec_path"
     echo "Created $spec_path"
 
 search-index:

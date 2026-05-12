@@ -25,7 +25,6 @@ from agent.runner import (
     _build_single_run_context,
     _execute_single_run,
     _relative_to_repo,
-    _resolve_post_success_design_audit,
     _timestamp_token,
 )
 from agent.runtime_limits import BatchRuntimeLimits
@@ -72,7 +71,6 @@ _SUPPORTED_HEADERS = {
     "max_turns",
     "sdk_package",
     "label",
-    "design_audit",
     "max_cost_usd",
 }
 _REQUIRED_HEADERS = {
@@ -94,7 +92,6 @@ class BatchAttemptRecord:
     max_turns: int
     max_cost_usd: float | None
     sdk_package: str
-    post_success_design_audit: bool
     success: bool
     message: str | None
     turn_count: int | None
@@ -202,21 +199,6 @@ def _infer_provider_from_model_id(model_id: str) -> str | None:
     if "/" in model_norm or model_norm.startswith("openrouter/"):
         return "openrouter"
     return None
-
-
-def _parse_optional_bool(value: Any, *, row_index: int, field_name: str) -> bool | None:
-    if value is None:
-        return None
-    text = str(value).strip().lower()
-    if not text:
-        return None
-    if text in {"1", "true", "t", "yes", "y", "on"}:
-        return True
-    if text in {"0", "false", "f", "no", "n", "off"}:
-        return False
-    raise ValueError(
-        f"Row {row_index} has invalid {field_name}: {value!r}; use true/false, 1/0, yes/no, on/off"
-    )
 
 
 def _summary_value(values: set[str]) -> str:
@@ -516,10 +498,9 @@ class BatchRowSpec:
     max_turns: int
     max_cost_usd: float | None
     sdk_package: str
-    post_success_design_audit: bool = False
     label: str | None = None
 
-    def resume_signature(self) -> tuple[str, str, str, str, str, int, float | None, str, bool]:
+    def resume_signature(self) -> tuple[str, str, str, str, str, int, float | None, str]:
         return (
             self.category_slug,
             self.prompt,
@@ -529,7 +510,6 @@ class BatchRowSpec:
             self.max_turns,
             self.max_cost_usd,
             self.sdk_package,
-            self.post_success_design_audit,
         )
 
 
@@ -562,7 +542,6 @@ class BatchRunConfig:
     keyboard_pause_enabled: bool
     record_author: str | None = None
     qc_blurb_text: str | None = None
-    post_success_design_audit: bool = False
 
 
 def _read_csv_rows(spec_path: Path) -> list[dict[str, str]]:
@@ -638,7 +617,6 @@ def _parse_batch_row(
     *,
     row_index: int,
     categories: CategoryStore,
-    default_post_success_design_audit: bool,
     default_max_cost_usd: float | None,
 ) -> BatchRowSpec:
     row_id = raw_row.get("row_id") or f"row_{row_index:04d}"
@@ -676,19 +654,6 @@ def _parse_batch_row(
     sdk_package = runner_normalize_sdk_package(sdk_package, row_index=row_index)
     if max_cost_usd is None:
         max_cost_usd = default_max_cost_usd
-    post_success_design_audit = _parse_optional_bool(
-        raw_row.get("design_audit"),
-        row_index=row_index,
-        field_name="design_audit",
-    )
-    if post_success_design_audit is None:
-        post_success_design_audit = default_post_success_design_audit
-    post_success_design_audit = _resolve_post_success_design_audit(
-        provider=provider,
-        model_id=model_id,
-        enabled=post_success_design_audit,
-    )
-
     category_title = _resolve_category_title(
         categories,
         row_index=row_index,
@@ -708,7 +673,6 @@ def _parse_batch_row(
         max_turns=max_turns,
         max_cost_usd=max_cost_usd,
         sdk_package=sdk_package,
-        post_success_design_audit=post_success_design_audit,
         label=label,
     )
 
@@ -717,7 +681,6 @@ def _load_batch_rows(
     spec_path: Path,
     repo: StorageRepo,
     *,
-    default_post_success_design_audit: bool,
     default_max_cost_usd: float | None,
 ) -> list[BatchRowSpec]:
     raw_rows = _read_csv_rows(spec_path)
@@ -729,7 +692,6 @@ def _load_batch_rows(
             raw_row,
             row_index=index,
             categories=categories,
-            default_post_success_design_audit=default_post_success_design_audit,
             default_max_cost_usd=default_max_cost_usd,
         )
         row_id = row.row_id
@@ -804,7 +766,6 @@ def _settings_summary(
     providers = {row.provider for row in rows}
     model_ids = {row.model_id for row in rows}
     sdk_packages = {row.sdk_package for row in rows}
-    post_success_design_audit_values = {str(row.post_success_design_audit) for row in rows}
     return {
         "providers": sorted(providers),
         "model_ids": sorted(model_ids),
@@ -817,7 +778,6 @@ def _settings_summary(
             {row.max_cost_usd for row in rows if row.max_cost_usd is not None}
         ),
         "sdk_packages": sorted(sdk_packages),
-        "post_success_design_audit": _summary_value(post_success_design_audit_values),
         "row_concurrency": concurrency,
         "subprocess_concurrency": local_work_concurrency,
         "system_prompt_path": system_prompt_path,
@@ -907,11 +867,6 @@ def _resume_signature_mismatch_field(existing: dict[str, Any], row: BatchRowSpec
             "max_cost_usd",
             _resume_signature_text(existing.get("max_cost_usd")),
             _resume_signature_text(row.max_cost_usd),
-        ),
-        (
-            "post_success_design_audit",
-            _resume_signature_text(existing.get("post_success_design_audit")),
-            _resume_signature_text(row.post_success_design_audit),
         ),
     )
     for field_name, existing_value, row_value in comparable_values:
@@ -1179,7 +1134,6 @@ def _build_batch_attempt_record(row: BatchRowSpec, outcome: BatchRowOutcome) -> 
         max_turns=row.max_turns,
         max_cost_usd=row.max_cost_usd,
         sdk_package=row.sdk_package,
-        post_success_design_audit=row.post_success_design_audit,
         success=outcome.success,
         message=outcome.message,
         turn_count=outcome.turn_count,
@@ -1341,7 +1295,6 @@ async def _run_batch_row(
         category_slug=row.category_slug,
         dataset_id=allocation.dataset_id,
         run_mode=BATCH_RUN_MODE,
-        post_success_design_audit=row.post_success_design_audit,
         max_cost_usd=row.max_cost_usd,
         context=context,
         persist_run_metadata=False,
@@ -1763,7 +1716,6 @@ def build_batch_config(
     system_prompt_path: str,
     max_cost_usd: float | None = None,
     qc_blurb_path: str | None,
-    post_success_design_audit: bool = False,
     resume: bool,
     resume_policy: str,
     allow_resume_spec_mismatch: bool = False,
@@ -1784,7 +1736,6 @@ def build_batch_config(
     rows = _load_batch_rows(
         spec_path,
         repo,
-        default_post_success_design_audit=post_success_design_audit,
         default_max_cost_usd=resolved_max_cost_usd,
     )
     resolved_concurrency = _resolve_batch_concurrency(concurrency, candidate_count=len(rows))

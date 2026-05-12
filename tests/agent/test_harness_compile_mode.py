@@ -353,7 +353,6 @@ def test_run_keeps_pasted_code_in_conversation_without_recovery_messages(
         provider="gemini",
         max_turns=6,
         display_enabled=False,
-        post_success_design_audit=False,
     )
     agent.tool_registry = ToolRegistry([CompileModelTool()])
 
@@ -396,7 +395,7 @@ def test_mark_code_mutated_invalidates_fresh_compile() -> None:
     assert agent._latest_code_is_fresh() is False
 
 
-def test_run_requires_compile_model_before_concluding_without_design_audit(
+def test_run_requires_compile_model_before_concluding(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -459,7 +458,6 @@ def test_run_requires_compile_model_before_concluding_without_design_audit(
         file_path=str(tmp_path / "model.py"),
         provider="gemini",
         max_turns=6,
-        post_success_design_audit=True,
         display_enabled=False,
     )
 
@@ -485,7 +483,6 @@ def test_run_requires_compile_model_before_concluding_without_design_audit(
         if message.get("role") == "user"
     ]
     assert any("<compile_required>" in content for content in user_messages)
-    assert all("<design_audit>" not in content for content in user_messages)
 
     compile_tool_messages = [
         message
@@ -496,9 +493,6 @@ def test_run_requires_compile_model_before_concluding_without_design_audit(
     compile_payload = json.loads(compile_tool_messages[0]["content"])
     assert "Compile passed cleanly." in compile_payload["result"]
 
-    assert all(
-        "<design_audit>" not in str(message.get("content", "")) for message in result.conversation
-    )
 
 
 def test_run_accepts_gemini_replace_without_allow_multiple(
@@ -562,7 +556,6 @@ def test_run_accepts_gemini_replace_without_allow_multiple(
         file_path=str(tmp_path / "model.py"),
         provider="gemini",
         max_turns=5,
-        post_success_design_audit=False,
         display_enabled=False,
     )
 
@@ -592,7 +585,7 @@ def test_run_accepts_gemini_replace_without_allow_multiple(
         ("openai", "OpenAILLM"),
     ],
 )
-def test_finish_attempts_do_not_inject_design_audit_even_when_enabled(
+def test_finish_attempts_share_compile_gate(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     provider_name: str,
@@ -684,7 +677,6 @@ def run_tests():
         file_path=str(tmp_path / f"{provider_name}_model.py"),
         provider=provider_name,
         max_turns=10,
-        post_success_design_audit=True,
         display_enabled=False,
     )
     agent.tool_registry = ToolRegistry([WriteFileTool(), CompileModelTool()])
@@ -708,7 +700,6 @@ def run_tests():
         for message in result.conversation
         if message.get("role") == "user"
     ]
-    assert sum("<design_audit>" in content for content in user_messages) == 0
     assert sum("<compile_required>" in content for content in user_messages) == 1
 
 
@@ -719,7 +710,7 @@ def run_tests():
         {},
     ],
 )
-def test_finish_attempt_paths_end_turn_and_share_compile_gate_without_design_audit(
+def test_finish_attempt_paths_end_turn_and_share_compile_gate(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     finish_response: dict[str, object],
@@ -764,7 +755,6 @@ def test_finish_attempt_paths_end_turn_and_share_compile_gate_without_design_aud
         file_path=str(tmp_path / "model.py"),
         provider="gemini",
         max_turns=6,
-        post_success_design_audit=True,
         display_enabled=False,
     )
     agent.tool_registry = ToolRegistry([CompileModelTool()])
@@ -791,7 +781,6 @@ def test_finish_attempt_paths_end_turn_and_share_compile_gate_without_design_aud
         if message.get("role") == "user"
     ]
     assert sum("<compile_required>" in content for content in user_messages) == 1
-    assert sum("<design_audit>" in content for content in user_messages) == 0
 
 
 def test_code_paste_response_uses_normal_finish_rules_without_nudge(
@@ -837,7 +826,6 @@ def test_code_paste_response_uses_normal_finish_rules_without_nudge(
         file_path=str(tmp_path / "model.py"),
         provider="gemini",
         max_turns=4,
-        post_success_design_audit=True,
         display_enabled=False,
     )
     agent.tool_registry = ToolRegistry([CompileModelTool()])

@@ -107,7 +107,6 @@ def _write_record(repo: StorageRepo, record_id: str, prompt_sha: str, dataset_id
             "prompting": {
                 "system_prompt_file": "designer_system_prompt_openai.txt",
                 "system_prompt_sha256": prompt_sha,
-                "post_success_design_audit": False,
             },
             "sdk": {"sdk_package": "sdk", "sdk_version": "workspace", "sdk_fingerprint": None},
             "environment": {"python_version": "3.11.0", "platform": "darwin-arm64"},

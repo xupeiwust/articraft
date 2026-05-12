@@ -31,7 +31,7 @@ from agent.compiler import (
 from agent.compiler import (
     compile_urdf_report_maybe_timeout as _compile_urdf_report_maybe_timeout,
 )
-from agent.cost import is_flash_model, max_cost_usd_from_env, parse_max_cost_usd
+from agent.cost import max_cost_usd_from_env, parse_max_cost_usd
 from agent.defaults import resolve_max_turns
 from agent.harness import ArticraftAgent, build_openai_prompt_cache_settings
 from agent.models import CompileReport as AgentCompileReport
@@ -144,19 +144,6 @@ def _read_logged_cost_totals(cost_path: Path) -> tuple[dict[str, int] | None, fl
     amount = costs_usd.get("total") if isinstance(costs_usd, dict) else None
     total_cost = float(amount) if isinstance(amount, (int, float)) else None
     return tokens, total_cost
-
-
-def _resolve_post_success_design_audit(
-    *,
-    provider: str,
-    model_id: str | None,
-    enabled: bool,
-) -> bool:
-    if provider == "gemini" and isinstance(model_id, str) and is_flash_model(model_id):
-        # Gemini Flash over-audits after a clean compile and uses the extra turn
-        # to keep probing or recompiling instead of concluding.
-        return False
-    return bool(enabled)
 
 
 def _draft_model_template(*, sdk_package: str) -> str:
@@ -434,7 +421,6 @@ def _single_run_settings_summary(
     sdk_package: str,
     openai_transport: str,
     openai_reasoning_summary: str | None,
-    post_success_design_audit: bool,
     max_cost_usd: float | None,
 ) -> dict[str, Any]:
     return SingleRunSettings(
@@ -446,7 +432,6 @@ def _single_run_settings_summary(
         sdk_package=sdk_package,
         openai_transport=openai_transport,
         openai_reasoning_summary=openai_reasoning_summary,
-        post_success_design_audit=post_success_design_audit,
         max_cost_usd=max_cost_usd,
     ).to_summary()
 
@@ -760,7 +745,6 @@ def create_workbench_draft_record(
     system_prompt_path: str = "designer_system_prompt.txt",
     sdk_package: str = "sdk",
     openai_reasoning_summary: str | None = "auto",
-    post_success_design_audit: bool = False,
     max_cost_usd: float | None = None,
     label: str | None = None,
     tags: Optional[list[str]] = None,
@@ -795,11 +779,6 @@ def create_workbench_draft_record(
         openai_reasoning_summary=openai_reasoning_summary,
     )
     resolved_max_turns = resolve_max_turns(model_id=selected_model_id, max_turns=max_turns)
-    post_success_design_audit = _resolve_post_success_design_audit(
-        provider=provider,
-        model_id=selected_model_id,
-        enabled=post_success_design_audit,
-    )
     loaded_system_prompt_path = resolve_system_prompt_path(
         system_prompt_path,
         provider=provider,
@@ -834,7 +813,6 @@ def create_workbench_draft_record(
         prompting=PromptingSettings(
             system_prompt_file=loaded_system_prompt_path.name,
             system_prompt_sha256=system_prompt_sha,
-            post_success_design_audit=post_success_design_audit,
         ),
         sdk=SdkSettings(
             sdk_package=sdk_package,
@@ -917,7 +895,6 @@ def _write_success_record(
     system_prompt_path: Path,
     sdk_package: str,
     openai_reasoning_summary: str | None,
-    post_success_design_audit: bool,
     max_cost_usd: float | None,
     final_code: str,
     urdf_xml: str,
@@ -1038,7 +1015,6 @@ def _write_success_record(
         prompting=PromptingSettings(
             system_prompt_file=system_prompt_path.name,
             system_prompt_sha256=system_prompt_sha,
-            post_success_design_audit=post_success_design_audit,
         ),
         sdk=SdkSettings(
             sdk_package=sdk_package,
@@ -1258,7 +1234,6 @@ async def run_from_input(
     on_maintenance_event: Optional[Callable[[dict[str, Any], float], None]] = None,
     sdk_package: str = "sdk",
     openai_reasoning_summary: Optional[str] = "auto",
-    post_success_design_audit: bool = False,
     max_cost_usd: float | None = None,
     label: str | None = None,
     tags: Optional[list[str]] = None,
@@ -1287,7 +1262,6 @@ async def run_from_input(
         on_turn_start=on_turn_start,
         sdk_package=sdk_package,
         openai_reasoning_summary=openai_reasoning_summary,
-        post_success_design_audit=post_success_design_audit,
         max_cost_usd=max_cost_usd,
         label=label,
         tags=tags,
@@ -1327,7 +1301,6 @@ async def _execute_single_run(
     on_maintenance_event: Optional[Callable[[dict[str, Any], float], None]] = None,
     sdk_package: str = "sdk",
     openai_reasoning_summary: Optional[str] = "auto",
-    post_success_design_audit: bool = False,
     max_cost_usd: float | None = None,
     label: str | None = None,
     tags: Optional[list[str]] = None,
@@ -1368,11 +1341,6 @@ async def _execute_single_run(
         openai_reasoning_summary=openai_reasoning_summary,
     )
     resolved_max_turns = resolve_max_turns(model_id=selected_model_id, max_turns=max_turns)
-    resolved_post_success_design_audit = _resolve_post_success_design_audit(
-        provider=provider,
-        model_id=selected_model_id,
-        enabled=post_success_design_audit,
-    )
     run_settings = SingleRunSettings(
         provider=provider,
         model_id=selected_model_id,
@@ -1382,7 +1350,6 @@ async def _execute_single_run(
         sdk_package=sdk_package,
         openai_transport=openai_transport,
         openai_reasoning_summary=openai_reasoning_summary,
-        post_success_design_audit=resolved_post_success_design_audit,
         max_cost_usd=max_cost_usd,
     )
 
@@ -1433,7 +1400,6 @@ async def _execute_single_run(
                         sdk_package=run_settings.sdk_package,
                         openai_transport=run_settings.openai_transport,
                         openai_reasoning_summary=run_settings.openai_reasoning_summary,
-                        post_success_design_audit=run_settings.post_success_design_audit,
                         max_cost_usd=run_settings.max_cost_usd,
                     ),
                 ),
@@ -1480,7 +1446,6 @@ async def _execute_single_run(
                     sdk_package=sdk_package,
                     openai_transport=openai_transport,
                     openai_reasoning_summary=openai_reasoning_summary,
-                    post_success_design_audit=resolved_post_success_design_audit,
                     max_cost_usd=max_cost_usd,
                 ),
             ),
@@ -1513,7 +1478,6 @@ async def _execute_single_run(
             checkpoint_urdf_path=resolved_context.checkpoint_urdf_path,
             sdk_package=sdk_package,
             openai_reasoning_summary=openai_reasoning_summary,
-            post_success_design_audit=resolved_post_success_design_audit,
             max_cost_usd=max_cost_usd,
             runtime_limits=runtime_limits,
         ) as agent:
@@ -1626,7 +1590,6 @@ async def _execute_single_run(
             system_prompt_path=loaded_system_prompt_path,
             sdk_package=sdk_package,
             openai_reasoning_summary=openai_reasoning_summary,
-            post_success_design_audit=resolved_post_success_design_audit,
             max_cost_usd=max_cost_usd,
             final_code=final_code,
             urdf_xml=urdf_xml,
@@ -1716,7 +1679,6 @@ async def _execute_single_run(
                     sdk_package=run_settings.sdk_package,
                     openai_transport=run_settings.openai_transport,
                     openai_reasoning_summary=run_settings.openai_reasoning_summary,
-                    post_success_design_audit=run_settings.post_success_design_audit,
                     max_cost_usd=run_settings.max_cost_usd,
                 ),
             ),
@@ -1759,7 +1721,6 @@ async def _run_from_input_impl(
     on_turn_start: Optional[Callable[[int], None]] = None,
     sdk_package: str = "sdk",
     openai_reasoning_summary: Optional[str] = "auto",
-    post_success_design_audit: bool = False,
     max_cost_usd: float | None = None,
     label: str | None = None,
     tags: Optional[list[str]] = None,
@@ -1832,7 +1793,6 @@ async def _run_from_input_impl(
         on_turn_start=on_turn_start,
         sdk_package=sdk_package,
         openai_reasoning_summary=openai_reasoning_summary,
-        post_success_design_audit=post_success_design_audit,
         max_cost_usd=max_cost_usd,
         label=label,
         tags=tags,
@@ -1855,7 +1815,6 @@ async def rerun_record_in_place(
     model_id: str | None = None,
     thinking_level: str | None = None,
     sdk_package: str | None = None,
-    post_success_design_audit: bool | None = None,
     max_cost_usd: float | None = None,
     display_enabled: Optional[bool] = None,
 ) -> int:
@@ -1924,16 +1883,6 @@ async def rerun_record_in_place(
         sdk_package
         if sdk_package is not None
         else _first_string(sdk.get("sdk_package"), existing_record.get("sdk_package"))
-    )
-    stored_post_success_design_audit = _optional_bool(prompting.get("post_success_design_audit"))
-    post_success_design_audit = (
-        bool(post_success_design_audit)
-        if post_success_design_audit is not None
-        else (
-            stored_post_success_design_audit
-            if stored_post_success_design_audit is not None
-            else False
-        )
     )
     try:
         stored_max_cost_usd = _optional_max_cost_usd(
@@ -2024,7 +1973,6 @@ async def rerun_record_in_place(
         display_enabled=display_enabled,
         sdk_package=sdk_package,
         openai_reasoning_summary=openai_reasoning_summary,
-        post_success_design_audit=post_success_design_audit,
         max_cost_usd=resolved_max_cost_usd,
         label=(
             _optional_string(workbench_entry.get("label"))
@@ -2186,12 +2134,6 @@ def main(argv: list[str] | None = None) -> int:
         default="sdk",
         help=argparse.SUPPRESS,
     )
-    parser.add_argument(
-        "--design-audit",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Enable or disable post-success design-audit injection.",
-    )
     args = parser.parse_args(argv)
     if args.collection == "dataset":
         if not args.dataset_id:
@@ -2287,7 +2229,6 @@ def main(argv: list[str] | None = None) -> int:
             system_prompt_path=args.system_prompt,
             sdk_package=sdk_package,
             openai_reasoning_summary=openai_reasoning_summary,
-            post_success_design_audit=args.design_audit,
             max_cost_usd=max_cost_usd,
             label=args.label,
             tags=list(args.tag or []),

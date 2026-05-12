@@ -307,7 +307,6 @@ class ArticraftAgent:
         checkpoint_urdf_path: Optional[Path] = None,
         sdk_package: str = "sdk",
         openai_reasoning_summary: Optional[str] = "auto",
-        post_success_design_audit: bool = False,
         max_cost_usd: float | None = None,
         runtime_limits: BatchRuntimeLimits | None = None,
     ):

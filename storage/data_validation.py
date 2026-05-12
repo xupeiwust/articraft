@@ -38,7 +38,6 @@ _BATCH_KNOWN_COLUMNS = {
     "max_turns",
     "sdk_package",
     "label",
-    "design_audit",
     "max_cost_usd",
     "scaffold_mode",
 }

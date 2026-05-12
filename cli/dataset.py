@@ -280,7 +280,6 @@ def _run_single_category_workflow(
     max_cost_usd: float | None,
     system_prompt_path: str,
     sdk_package: str,
-    design_audit: bool,
     dataset_id: str | None,
     record_id: str | None,
 ) -> tuple[str, str, dict, object]:
@@ -322,7 +321,6 @@ def _run_single_category_workflow(
             max_cost_usd=max_cost_usd,
             system_prompt_path=system_prompt_path,
             sdk_package=sdk_package,
-            post_success_design_audit=design_audit,
             collection="dataset",
             category_slug=normalized_category_slug,
             dataset_id=resolved_dataset_id,
@@ -700,12 +698,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     run_single.add_argument(
-        "--design-audit",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Enable or disable post-success design-audit injection.",
-    )
-    run_single.add_argument(
         "--dataset-id",
         default=None,
         help="Optional dataset ID override. Defaults to an auto-generated ds_<slug>_<token> ID.",
@@ -905,12 +897,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional QC checklist file to append to every prompt.",
     )
     run_batch.add_argument(
-        "--design-audit",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Enable or disable post-success design-audit injection for this batch.",
-    )
-    run_batch.add_argument(
         "--resume",
         action="store_true",
         help="Resume the latest prior run for this batch spec in place.",
@@ -1070,7 +1056,6 @@ def main(argv: list[str] | None = None) -> int:
                 max_cost_usd=max_cost_usd,
                 system_prompt_path=args.system_prompt_path,
                 sdk_package=sdk_package,
-                design_audit=args.design_audit,
                 dataset_id=args.dataset_id,
                 record_id=args.record_id,
             )
@@ -1500,7 +1485,6 @@ def main(argv: list[str] | None = None) -> int:
                 system_prompt_path=args.system_prompt_path,
                 max_cost_usd=args.max_cost_usd,
                 qc_blurb_path=args.qc_blurb,
-                post_success_design_audit=args.design_audit,
                 resume=args.resume,
                 resume_policy=args.resume_policy,
                 allow_resume_spec_mismatch=args.allow_resume_spec_mismatch,

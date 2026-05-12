@@ -107,12 +107,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     init_record.add_argument(
-        "--design-audit",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Enable or disable post-success design-audit injection for this draft and reruns.",
-    )
-    init_record.add_argument(
         "--label",
         default=None,
         help="Optional workbench label and display title override.",
@@ -158,12 +152,6 @@ def _build_parser() -> argparse.ArgumentParser:
         "--sdk-package",
         default=None,
         help=argparse.SUPPRESS,
-    )
-    rerun.add_argument(
-        "--design-audit",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Enable or disable post-success design-audit injection for this rerun.",
     )
     subparsers.add_parser("status", help="Show workbench storage status.")
     return parser
@@ -227,7 +215,6 @@ def main(argv: list[str] | None = None) -> int:
                 system_prompt_path=args.system_prompt_path,
                 sdk_package=args.sdk_package,
                 openai_reasoning_summary=args.openai_reasoning_summary,
-                post_success_design_audit=args.design_audit,
                 label=args.label,
                 tags=args.tags,
                 record_id=args.record_id,
@@ -282,7 +269,6 @@ def main(argv: list[str] | None = None) -> int:
                 thinking_level=args.thinking_level,
                 max_cost_usd=max_cost_usd,
                 sdk_package=sdk_package,
-                post_success_design_audit=args.design_audit,
             )
         )
         if exit_code != 0:

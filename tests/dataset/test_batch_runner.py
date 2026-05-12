@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -24,7 +23,6 @@ def _make_row() -> batch_runner.BatchRowSpec:
         max_turns=12,
         max_cost_usd=None,
         sdk_package="sdk",
-        post_success_design_audit=True,
         label=None,
     )
 
@@ -60,7 +58,6 @@ def _make_config(tmp_path: Path) -> batch_runner.BatchRunConfig:
         pause_poll_seconds=1.0,
         keyboard_pause_enabled=False,
         qc_blurb_text=None,
-        post_success_design_audit=True,
     )
 
 
@@ -106,7 +103,6 @@ def test_resume_signature_and_mismatch_field() -> None:
         "max_turns": 12,
         "max_cost_usd": None,
         "sdk_package": "sdk",
-        "post_success_design_audit": True,
     }
 
     assert row.resume_signature() == (
@@ -118,7 +114,6 @@ def test_resume_signature_and_mismatch_field() -> None:
         12,
         None,
         "sdk",
-        True,
     )
     assert batch_runner._resume_signature_mismatch_field(existing, row) is None
 
@@ -128,23 +123,6 @@ def test_resume_signature_and_mismatch_field() -> None:
     existing["model_id"] = "gpt-5.4"
     existing["max_cost_usd"] = 1.25
     assert batch_runner._resume_signature_mismatch_field(existing, row) == "max_cost_usd"
-
-
-def test_resume_signature_mismatch_field_preserves_false_bool_normalization() -> None:
-    row = replace(_make_row(), post_success_design_audit=False)
-    existing = {
-        "category_slug": "hinge",
-        "prompt": "make a hinge",
-        "provider": "openai",
-        "model_id": "gpt-5.4",
-        "thinking_level": "high",
-        "max_turns": 12,
-        "max_cost_usd": None,
-        "sdk_package": "sdk",
-        "post_success_design_audit": False,
-    }
-
-    assert batch_runner._resume_signature_mismatch_field(existing, row) is None
 
 
 def test_batch_result_record_serialization_preserves_running_and_terminal_shapes(
@@ -237,7 +215,6 @@ def test_write_row_state_serializes_attempts(tmp_path: Path) -> None:
         max_turns=12,
         max_cost_usd=None,
         sdk_package="sdk",
-        post_success_design_audit=True,
         success=False,
         message="synthetic failure",
         turn_count=1,

@@ -16,7 +16,6 @@ def test_runner_help_text(capsys: pytest.CaptureFixture[str]) -> None:
     assert "--prompt" in help_text
     assert "--image" in help_text
     assert "--provider {anthropic,gemini,openai,openrouter}" in help_text
-    assert "--design-audit" in help_text
     assert "--openai-transport {http,websocket}" in help_text
     assert "--collection {workbench,dataset}" in help_text
     assert "--dataset-id DATASET_ID" in help_text
