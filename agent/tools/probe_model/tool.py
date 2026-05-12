@@ -17,10 +17,12 @@ from agent.tools.base import (
 )
 from agent.tools.probe_model.description import PROBE_MODEL_DESCRIPTION
 
+DEFAULT_PROBE_TIMEOUT_MS = 600_000
+
 
 class ProbeModelParams(ToolParamsModel):
     code: str
-    timeout_ms: int = 10_000
+    timeout_ms: int = DEFAULT_PROBE_TIMEOUT_MS
     include_stdout: bool = False
 
 
@@ -172,7 +174,9 @@ class ProbeModelTool(BaseDeclarativeTool):
                 },
                 "timeout_ms": {
                     "type": "integer",
-                    "description": "Execution timeout in milliseconds (default: 10000).",
+                    "description": (
+                        f"Execution timeout in milliseconds (default: {DEFAULT_PROBE_TIMEOUT_MS})."
+                    ),
                 },
                 "include_stdout": {
                     "type": "boolean",
