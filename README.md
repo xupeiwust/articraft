@@ -8,11 +8,11 @@
 Articraft allows you to generate high-quality articulated 3D assets purely from natural language prompts, inspect them locally with a dedicated viewer, and systematically curate large-scale 3D asset datasets using major LLM providers (OpenAI, Anthropic, Gemini, OpenRouter).
 
 ### Security Note
-⚠️ Articraft compiles and inspects generated records by executing their `model.py` files as Python code. Only run generated records and model scripts from trusted sources. Review them first, or run Articraft in an isolated container/disposable environment when working with untrusted inputs.
+Articraft compiles and inspects generated records by executing their `model.py` files as Python code. Only run generated records and model scripts from trusted sources. Review them first, or run Articraft in an isolated container/disposable environment when working with untrusted inputs.
 
 ---
 
-## ⚡️ Quickstart
+## Quickstart
 
 ### 1. Prerequisites
 - Python 3.12 recommended (or 3.11). *Note: 3.13+ is not currently supported due to `cadquery` dependency wheels.*
@@ -72,7 +72,7 @@ To contribute data, open a pull request with the finalized dataset record. Inclu
 
 ---
 
-## 📚 Documentation & Advanced Usage
+## Documentation & Advanced Usage
 
 Articraft scales to massive pipelines using CSV batch specifications. For detailed architectural background and how to run dataset workflows, see our documentation:
 
@@ -81,10 +81,10 @@ Articraft scales to massive pipelines using CSV batch specifications. For detail
 - **[Contributing Standards & Workflow](CONTRIBUTING.md)**
 - **[Security Policy](SECURITY.md)**
 
-## 🤝 Contributing
+## Contributing
 We welcome improvements to Articraft! Please refer to the [Contributor Guidelines](CONTRIBUTING.md) to get started on setting up a dev environment and submitting Pull Requests. Be sure to review our [Code of Conduct](CODE_OF_CONDUCT.md).
 
-## 📄 Citation
+## Citation
 
 ```bibtex
 @misc{articraft2026,
