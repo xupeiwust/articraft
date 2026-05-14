@@ -79,6 +79,9 @@ Before submitting your PR, make sure to rate all assets that you generate in the
 
 For full details on opening pull requests, visual rating expectations, and our data pipelines, please read the complete **[Data Contribution Workflow in CONTRIBUTING.md](CONTRIBUTING.md)**.
 
+**Data Usage & Licensing**
+By contributing data to the Articraft project, you acknowledge and agree that your submissions will be used to build, evaluate, and improve machine learning models, and will be distributed publicly as part of our datasets. You explicitly agree that all contributed data is released under the **[Creative Commons Attribution 4.0 International (CC-BY 4.0)](https://creativecommons.org/licenses/by/4.0/)** license.
+
 ---
 
 ## Documentation & Advanced Usage
